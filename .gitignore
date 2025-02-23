@@ -1,0 +1,8 @@
+/Library
+/Logs
+/Temp
+/Logs
+*.log
+/Logs
+*.log
+*.dwlt
