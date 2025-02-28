@@ -18,9 +18,16 @@ public class UI : MonoBehaviour
     public TextMeshProUGUI LevelText;
     public TextMeshProUGUI ScoreText;
     public TextMeshProUGUI ComboText;
+    public Button ResignButton;
 
     public Button AutoSolveButton;
     public HistoryPanel HistoryPanel;
+
+    //Background;
+    public SpriteRenderer BackgroundSpriteRenderer;
+    public Color NormalColor;
+    public Color DangerColor;
+    public Color GameOverColor;
 
     private void Start()
     {
@@ -32,9 +39,10 @@ public class UI : MonoBehaviour
         StartPrompt.gameObject.SetActive(true);
         ResetPrompt.gameObject.SetActive(false);
         GameElementsObject.gameObject.SetActive(false);
+        BackgroundSpriteRenderer.color = NormalColor;
 
         HighScoreText.text = $"Hi Score:{Game.HighScore}";
-        AudioManager.Instance.PlayMusic(AudioManager.Instance.MainMenuMusic);
+        AudioManager.Instance.PlayMusic(AudioManager.Instance.MainMenuMusic, false);
     }
 
     public void Start_Clicked()
@@ -45,6 +53,7 @@ public class UI : MonoBehaviour
         Game.StartGame();
         HistoryPanel.ClearHistory();
         AutoSolveButton.gameObject.SetActive(false);
+        ResignButton.gameObject.SetActive(true);
     }
 
     public void Retry_Clicked()
@@ -63,6 +72,11 @@ public class UI : MonoBehaviour
         FindObjectOfType<Board>().AutoSolve();
     }
 
+    public void Resign_Clicked()
+    {
+        Game.TimeLeft = 0;
+    }
+
     private void Update()
     {
         float t = Game.TimeLeft / Game.TimeLimit;
@@ -75,6 +89,22 @@ public class UI : MonoBehaviour
         LevelText.text = $"{Game.Level}";
         ScoreText.text = $"{Game.Score}";
         ComboText.text = $"{Game.Combo}";
+
+        if (Game.CurrentGameState == GameState.Running)
+        {
+            if (t > 0.3f)
+            {
+                BackgroundSpriteRenderer.color = NormalColor;
+            }
+            else if (t > 0)
+            {
+                BackgroundSpriteRenderer.color = DangerColor;
+            }
+            else
+            {
+                BackgroundSpriteRenderer.color = GameOverColor;
+            }
+        }
     }
 
     internal void ShowGameOver()
@@ -84,5 +114,8 @@ public class UI : MonoBehaviour
         GameElementsObject.gameObject.SetActive(true);
 
         AutoSolveButton.gameObject.SetActive(true);
+        ResignButton.gameObject.SetActive(false);
+        BackgroundSpriteRenderer.color = GameOverColor;
+        AudioManager.Instance.PlayMusic(AudioManager.Instance.MainMenuMusic, false);
     }
 }

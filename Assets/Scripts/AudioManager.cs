@@ -22,10 +22,10 @@ public class AudioManager : MonoBehaviour
         Instance = this;
     }
 
-    internal void PlayMusic(AudioClip musicClip)
+    internal void PlayMusic(AudioClip musicClip, bool loop = true)
     {
         MusicAudioSource.clip = musicClip;
-        MusicAudioSource.loop = true;
+        MusicAudioSource.loop = loop;
         MusicAudioSource.Play();
     }
 
