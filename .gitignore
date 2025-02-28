@@ -6,3 +6,6 @@
 /Logs
 *.log
 *.dwlt
+*.zip
+/Build
+/Logs

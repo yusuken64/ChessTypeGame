@@ -10,6 +10,7 @@ public class UI : MonoBehaviour
     public GameObject StartPrompt;
     public TextMeshProUGUI HighScoreText;
     public GameObject ResetPrompt;
+    public Instructions Instructions;
 
     //Game Elements
     public GameObject GameElementsObject;
@@ -39,6 +40,7 @@ public class UI : MonoBehaviour
         StartPrompt.gameObject.SetActive(true);
         ResetPrompt.gameObject.SetActive(false);
         GameElementsObject.gameObject.SetActive(false);
+        Instructions.gameObject.SetActive(false);
         BackgroundSpriteRenderer.color = NormalColor;
 
         HighScoreText.text = $"Hi Score:{Game.HighScore}";
@@ -75,6 +77,11 @@ public class UI : MonoBehaviour
     public void Resign_Clicked()
     {
         Game.TimeLeft = 0;
+    }
+
+    public void HowToPlay_Clicked()
+    {
+        Instructions.OpenInstructions();
     }
 
     private void Update()
