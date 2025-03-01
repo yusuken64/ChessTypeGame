@@ -45,6 +45,8 @@ public class UI : MonoBehaviour
 
         HighScoreText.text = $"Hi Score:{Game.HighScore}";
         AudioManager.Instance.PlayMusic(AudioManager.Instance.MainMenuMusic, false);
+
+        FindObjectOfType<Board>().ReinitializeData();
     }
 
     public void Start_Clicked()

@@ -27,7 +27,6 @@ public class Game : MonoBehaviour
     public GameState CurrentGameState;
     public IEnumerable<PieceRecord> CurrentLevelRecord;
 
-
     private void Awake()
     {
         Board.PieceCaptured += Board_PieceCaptured;

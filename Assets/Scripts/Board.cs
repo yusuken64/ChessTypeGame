@@ -32,9 +32,66 @@ public class Board : MonoBehaviour
 
     void Start()
     {
+        ReloadExistingBoard();
+    }
+
+    public void ReinitializeData()
+    {
+        string data = ",,,,," +
+                      ",,,,," +
+                      ",,,,," +
+                      ",BR,BB,BN,," +
+                      ",BQ,WP,BN,";
+
+        string[] csv = data.Split(',');
+
+        IEnumerable<PieceRecord?> boardRecord = csv.Select((value, index) =>
+        {
+            if (value.Length == 0) { return null; }
+
+            PieceMovement pieceMovement = default;
+            char letter = value[1];
+            switch (letter)
+            {
+                case 'K':
+                    pieceMovement = PieceMovement.King;
+                    break;
+                case 'Q':
+                    pieceMovement = PieceMovement.Queen;
+                    break;
+                case 'N':
+                    pieceMovement = PieceMovement.Knight;
+                    break;
+                case 'B':
+                    pieceMovement = PieceMovement.Bishop;
+                    break;
+                case 'R':
+                    pieceMovement = PieceMovement.Rook;
+                    break;
+                case 'P':
+                    pieceMovement = PieceMovement.Pawn;
+                    break;
+            }
+
+            int x = index % 5;
+            int y = 4 - index / 5;
+
+            return new PieceRecord?(new PieceRecord(
+                pieceMovement,
+                value.StartsWith('W'),
+                x,
+                y
+            ));
+        });
+
+        SetState(boardRecord.OfType<PieceRecord>());
+    }
+
+    private void ReloadExistingBoard()
+    {
         Cells = new Cell[Width, Height];
         var cells = FindObjectsOfType<Cell>();
-        foreach(var cell in cells)
+        foreach (var cell in cells)
         {
             Cells[cell.X, cell.Y] = cell;
         }
