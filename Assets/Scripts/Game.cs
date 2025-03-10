@@ -29,17 +29,17 @@ public class Game : MonoBehaviour
 
     private void Awake()
     {
-        Board.PieceCaptured += Board_PieceCaptured;
+        Board.PieceMoved += Board_PieceCaptured;
     }
 
     private void OnDestroy()
     {
-        Board.PieceCaptured -= Board_PieceCaptured;
+        Board.PieceMoved -= Board_PieceCaptured;
     }
 
-    private void Board_PieceCaptured(Piece piece)
+    private void Board_PieceCaptured(Piece originalPiece, Piece capturedPiece)
     {
-        if (piece == null)
+        if (capturedPiece == null)
         {
             AudioManager.Instance.PlaySFX(AudioManager.Instance.Error);
             Combo = 0;

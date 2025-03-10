@@ -19,9 +19,9 @@ public class Draggable : MonoBehaviour
             return;
         }
         offset = transform.position - GetMouseWorldPosition();
-        var hit = GetCellUnderneath();
+        var hit = GetCellUnderMouse();
 
-        var cell = hit.collider?.GetComponent<Cell>();
+        var cell = hit.GetComponent<Collider2D>()?.GetComponent<Cell>();
         if (cell != null)
         {
             isDragging = true;
@@ -34,40 +34,24 @@ public class Draggable : MonoBehaviour
         if (isDragging)
         {
             transform.position = GetMouseWorldPosition() + offset;
-            CheckCellUnderneath();
         }
     }
 
     void OnMouseUp()
     {
         isDragging = false;
-        RaycastHit2D hit = GetCellUnderneath();
+        var collider = GetCellUnderMouse();
         Cell cell = null;
-        if (hit.collider != null)
+        if (collider != null)
         {
-            cell = hit.collider.GetComponent<Cell>();
+            cell = collider.GetComponent<Cell>();
         }
         OnReleased?.Invoke(cell);
     }
 
-    private void CheckCellUnderneath()
+    private Collider2D GetCellUnderMouse()
     {
-        RaycastHit2D hit = GetCellUnderneath();
-
-        //if (hit.collider != null)
-        //{
-        //    Debug.Log("Over Cell: " + hit.collider.gameObject.name);
-        //}
-        //else
-        //{
-        //    Debug.Log("Not over any cell.");
-        //}
-    }
-
-    private RaycastHit2D GetCellUnderneath()
-    {
-        Vector2 rayOrigin = (Vector2)transform.position + Vector2.up * 0.1f; // Move ray slightly above to avoid self-hit
-        RaycastHit2D hit = Physics2D.Raycast(rayOrigin, Vector2.zero, Mathf.Infinity, GridLayer);
+        Collider2D hit = Physics2D.OverlapPoint(transform.position, GridLayer);
         return hit;
     }
 

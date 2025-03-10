@@ -70,7 +70,9 @@ public class GameGenerator : MonoBehaviour
         return boardCopy;
     }
 
+#pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
     private List<(int x, int y)>? FindSolution(PieceRecord?[,] board, PieceRecord startingPiece)
+#pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
     {
         var count = board.OfType<PieceRecord>().Count();
         if (count == 0) { return new List<(int x, int y)> { (startingPiece.X, startingPiece.Y) }; }

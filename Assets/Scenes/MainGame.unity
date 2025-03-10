@@ -4465,6 +4465,7 @@ MonoBehaviour:
   Height: 5
   xOffset: 1
   yOffset: 1
+  Echo: 1
   CellPrefab: {fileID: 3874901636830507977, guid: e4d0482ae6010a64794f41c8da07fa55, type: 3}
   KingPrefab: {fileID: 5012544779128870848, guid: cfec5495cbef80a44b51ef88c1e40204, type: 3}
   QueenPrefab: {fileID: 5012544779128870848, guid: 2346288a34432014581c5360798db223, type: 3}

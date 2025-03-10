@@ -13,6 +13,7 @@ public class Board : MonoBehaviour
 
     public float xOffset;
     public float yOffset;
+    public bool Echo;
 
     public Cell CellPrefab;
 
@@ -25,8 +26,8 @@ public class Board : MonoBehaviour
     public Piece KnightPrefab;
     public Piece PawnPrefab;
 
-    public delegate void PieceCapturedDeleate(Piece piece);
-    public PieceCapturedDeleate PieceCaptured;
+    public delegate void PieceMovedDelegate(Piece movedPiece, Piece capturedPiece);
+    public PieceMovedDelegate PieceMoved;
 
     public Solution Solution { get; private set; }
 
@@ -273,19 +274,38 @@ public class Board : MonoBehaviour
                     var originalPiece = originalCell.CurrentPiece;
                     originalCell.SetPiece(null);
 
-                    if (newCell.CurrentPiece != null &&
-                        newCell.CurrentPiece.PieceColor != originalPiece.PieceColor)
+                    if (Echo)
                     {
-                        //capture
-                        Destroy(originalPiece.gameObject);
-                        newCell.Capture(piece);
+                        if (newCell.CurrentPiece != null &&
+                            newCell.CurrentPiece.PieceColor != originalPiece.PieceColor)
+                        {
+                            //capture
+                            Destroy(originalPiece.gameObject);
+                            newCell.CaptureEcho(piece);
 
-                        PieceCaptured(piece);
+                            PieceMoved?.Invoke(originalPiece, piece);
+                        }
+                        else
+                        {
+                            newCell.SetPiece(piece);
+                            PieceMoved?.Invoke(originalPiece, null);
+                        }
                     }
                     else
                     {
-                        newCell.SetPiece(piece);
-                        PieceCaptured(null);
+                        if (newCell.CurrentPiece != null &&
+                            newCell.CurrentPiece.PieceColor != originalPiece.PieceColor)
+                        {
+                            //capture
+                            Destroy(newCell.CurrentPiece.gameObject);
+                            newCell.Capture(piece);
+                            PieceMoved?.Invoke(originalPiece, piece);
+                        }
+                        else
+                        {
+                            newCell.SetPiece(piece);
+                            PieceMoved?.Invoke(originalPiece, null);
+                        }
                     }
                 }
                 else

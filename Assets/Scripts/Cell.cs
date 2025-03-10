@@ -143,9 +143,14 @@ public class Cell : MonoBehaviour
         SetPiece(prefab);
     }
 
-    internal void Capture(Piece piece)
+    internal void CaptureEcho(Piece piece)
     {
         CurrentPiece.SetColor(piece.PieceColor);
+    }
+
+    internal void Capture(Piece piece)
+    {
+        SetPiece(piece);
     }
 
     internal void SetPiece(Piece piece)
@@ -164,7 +169,7 @@ public class Cell : MonoBehaviour
 
     internal void ResetPiece()
     {
-        AudioManager.Instance.PlaySFX(AudioManager.Instance.Error);
+        AudioManager.Instance?.PlaySFX(AudioManager.Instance.Error);
         SnapToCell();
     }
 

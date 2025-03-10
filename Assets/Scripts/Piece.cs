@@ -189,39 +189,41 @@ public class Piece : MonoBehaviour
     {
         List<(int x, int y)> moves = new List<(int x, int y)>();
 
+        int yOffset = pieceColor == PieceColor.White ? 1 : -1;
+        int yTarget = y + yOffset;
         if (!attackOnly)
         {
-            if (IsMovable(cells, x, y + 1) &&
-                cells[x, y + 1] == null)
+            if (IsMovable(cells, x, yTarget) &&
+                cells[x, yTarget] == null)
             {
-                moves.Add(new (x, y + 1));
+                moves.Add(new (x, yTarget));
             }
-            if (IsMovable(cells, x + 1, y + 1) &&
-                cells[x + 1, y + 1] != null &&
-                cells[x + 1, y + 1]?.IsWhite != (pieceColor == PieceColor.White))
+            if (IsMovable(cells, x + 1, yTarget) &&
+                cells[x + 1, yTarget] != null &&
+                cells[x + 1, yTarget]?.IsWhite != (pieceColor == PieceColor.White))
             {
-                moves.Add(new(x + 1, y + 1));
+                moves.Add(new(x + 1, yTarget));
             }
 
-            if (IsMovable(cells, x - 1, y + 1) &&
-                cells[x - 1, y + 1] != null &&
-                cells[x - 1, y + 1]?.IsWhite != (pieceColor == PieceColor.White))
+            if (IsMovable(cells, x - 1, yTarget) &&
+                cells[x - 1, yTarget] != null &&
+                cells[x - 1, yTarget]?.IsWhite != (pieceColor == PieceColor.White))
             {
-                moves.Add(new(x - 1, y + 1));
+                moves.Add(new(x - 1, yTarget));
             }
         }
         else
         {
-            if (IsMovable(cells, x + 1, y + 1) &&
-                cells[x + 1, y + 1] == null)
+            if (IsMovable(cells, x + 1, yTarget) &&
+                cells[x + 1, yTarget] == null)
             {
-                moves.Add(new(x + 1, y + 1));
+                moves.Add(new(x + 1, yTarget));
             }
 
-            if (IsMovable(cells, x - 1, y + 1) &&
-                cells[x - 1, y + 1] == null)
+            if (IsMovable(cells, x - 1, yTarget) &&
+                cells[x - 1, yTarget] == null)
             {
-                moves.Add(new(x - 1, y + 1));
+                moves.Add(new(x - 1, yTarget));
             }
         }
 
