@@ -40,7 +40,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.KingPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.White);
+        prefab.SetColor(ChessColor.w);
         SetPiece(prefab);
     }
 
@@ -49,7 +49,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.QueenPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.White);
+        prefab.SetColor(ChessColor.w);
         SetPiece(prefab);
     }
 
@@ -58,7 +58,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.BishopPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.White);
+        prefab.SetColor(ChessColor.w);
         SetPiece(prefab);
     }
 
@@ -67,7 +67,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.RookPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.White);
+        prefab.SetColor(ChessColor.w);
         SetPiece(prefab);
     }
 
@@ -76,7 +76,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.KnightPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.White);
+        prefab.SetColor(ChessColor.w);
         SetPiece(prefab);
     }
 
@@ -85,7 +85,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.PawnPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.White);
+        prefab.SetColor(ChessColor.w);
         SetPiece(prefab);
     }
 
@@ -94,7 +94,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.KingPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.Black);
+        prefab.SetColor(ChessColor.b);
         SetPiece(prefab);
     }
 
@@ -103,7 +103,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.QueenPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.Black);
+        prefab.SetColor(ChessColor.b);
         SetPiece(prefab);
     }
 
@@ -112,7 +112,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.BishopPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.Black);
+        prefab.SetColor(ChessColor.b);
         SetPiece(prefab);
     }
 
@@ -121,7 +121,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.RookPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.Black);
+        prefab.SetColor(ChessColor.b);
         SetPiece(prefab);
     }
 
@@ -130,7 +130,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.KnightPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.Black);
+        prefab.SetColor(ChessColor.b);
         SetPiece(prefab);
     }
 
@@ -139,7 +139,7 @@ public class Cell : MonoBehaviour
     {
         var board = FindObjectOfType<Board>();
         var prefab = Instantiate(board.PawnPrefab, board.PiecesContainer);
-        prefab.SetColor(PieceColor.Black);
+        prefab.SetColor(ChessColor.b);
         SetPiece(prefab);
     }
 

@@ -50,27 +50,27 @@ public class Board : MonoBehaviour
         {
             if (value.Length == 0) { return null; }
 
-            PieceMovement pieceMovement = default;
+            PieceType pieceMovement = default;
             char letter = value[1];
             switch (letter)
             {
                 case 'K':
-                    pieceMovement = PieceMovement.King;
+                    pieceMovement = PieceType.King;
                     break;
                 case 'Q':
-                    pieceMovement = PieceMovement.Queen;
+                    pieceMovement = PieceType.Queen;
                     break;
                 case 'N':
-                    pieceMovement = PieceMovement.Knight;
+                    pieceMovement = PieceType.Knight;
                     break;
                 case 'B':
-                    pieceMovement = PieceMovement.Bishop;
+                    pieceMovement = PieceType.Bishop;
                     break;
                 case 'R':
-                    pieceMovement = PieceMovement.Rook;
+                    pieceMovement = PieceType.Rook;
                     break;
                 case 'P':
-                    pieceMovement = PieceMovement.Pawn;
+                    pieceMovement = PieceType.Pawn;
                     break;
             }
 
@@ -169,28 +169,28 @@ public class Board : MonoBehaviour
         foreach(var record in boardRecord)
         {
             var cell = Cells[record.X, record.Y];
-            switch (record.PieceMovement)
+            switch (record.PieceType)
             {
-                case PieceMovement.King:
+                case PieceType.King:
                     cell.SetPiece_BlackKing();
                     break;
-                case PieceMovement.Queen:
+                case PieceType.Queen:
                     cell.SetPiece_BlackQueen();
                     break;
-                case PieceMovement.Bishop:
+                case PieceType.Bishop:
                     cell.SetPiece_BlackBishop();
                     break;
-                case PieceMovement.Rook:
+                case PieceType.Rook:
                     cell.SetPiece_BlackRook();
                     break;
-                case PieceMovement.Knight:
+                case PieceType.Knight:
                     cell.SetPiece_BlackKnight();
                     break;
-                case PieceMovement.Pawn:
+                case PieceType.Pawn:
                     cell.SetPiece_BlackPawn();
                     break;
             }
-            PieceColor pieceColor = record.IsWhite ? PieceColor.White : PieceColor.Black;
+            ChessColor pieceColor = record.IsWhite ? ChessColor.w : ChessColor.b;
             cell.CurrentPiece.SetColor(pieceColor);
         }
     }
@@ -249,12 +249,50 @@ public class Board : MonoBehaviour
 
     public void PiecePickedUp(Piece piece)
     {
-        var originCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == piece);
-        var movableCells = piece.GetMovableSquares(Cells, originCell, piece.PieceColor);
-        foreach(var cell in movableCells)
+        IEnumerable<Cell> movableCells = GetMovabableCells(piece);
+
+        foreach (var cell in movableCells)
         {
             cell.SetToDroppable();
         }
+    }
+
+    internal static IEnumerable<Move> GetMovableSquares(PieceRecord?[,] board, ChessColor player)
+    {
+        string fen = FENParser.BoardToFEN(board, board.GetLength(0), board.GetLength(1));
+        ChessGameRecord game = new ChessGameRecord(fen, board.GetLength(0), board.GetLength(1));
+        return Solver.GetValidMoves(game, player);
+    }
+
+    internal static IEnumerable<Move> GetMovableSquaresForPiece(PieceRecord?[,] board, PieceRecord? lastPiece, ChessColor w)
+    {
+        string fen = FENParser.BoardToFEN(board, board.GetLength(0), board.GetLength(1));
+        ChessGameRecord game = new ChessGameRecord(fen, board.GetLength(0), board.GetLength(1));
+        return game.GetValidMoves(lastPiece.Value.PieceType, (lastPiece.Value.X, lastPiece.Value.Y));
+    }
+
+    internal static IEnumerable<Move> GetPlacableSquaresForPiece(PieceRecord?[,] board, PieceRecord? lastPiece)
+    {
+        string fen = FENParser.BoardToFEN(board, board.GetLength(0), board.GetLength(1));
+        ChessGameRecord game = new ChessGameRecord(fen, board.GetLength(0), board.GetLength(1));
+        return game.GetPlacableSquares(lastPiece.Value.PieceType, (lastPiece.Value.X, lastPiece.Value.Y));
+    }
+
+    public IEnumerable<Cell> GetMovabableCells(Piece piece)
+    {
+        var originCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == piece);
+        PieceRecord?[,] boardData2 = Solver.ToBoardData(this);
+        string fen = FENParser.BoardToFEN(boardData2, Cells.GetLength(0), Cells.GetLength(1));
+        ChessGameRecord game = new ChessGameRecord(fen, Cells.GetLength(0), Cells.GetLength(1));
+        IEnumerable<Move> validMoves = game.GetValidMoves((originCell.X, originCell.Y));
+        var movableCells = validMoves.Select(x => FromIndex(x.To, Cells.GetLength(0)))
+            .Select(x => Cells[x.x, x.y]);
+        return movableCells;
+    }
+
+    public static (int x, int y) FromIndex(int positionIndex, int boardSize)
+    {
+        return (positionIndex % boardSize, positionIndex / boardSize);
     }
 
     public void PieceDropped(Piece piece, Cell cell)
@@ -266,7 +304,7 @@ public class Board : MonoBehaviour
             var newCell = Cells[x, y];
             if (originalCell != null)
             {
-                var movableCells = piece.GetMovableSquares(Cells, originalCell, piece.PieceColor);
+                IEnumerable<Cell> movableCells = GetMovabableCells(piece);
 
                 if (originalCell != newCell &&
                     movableCells.Contains(newCell))
@@ -347,25 +385,25 @@ public struct PieceRecord
 {
     public int X;
     public int Y;
-    public PieceMovement PieceMovement;
+    public PieceType PieceType;
     public bool IsWhite;
 
     public PieceRecord(Cell cell)
     {
         this.X = cell.X;
         this.Y = cell.Y;
-        this.PieceMovement = cell.CurrentPiece.PieceMovement;
-        this.IsWhite = cell.CurrentPiece.PieceColor == PieceColor.White;
+        this.PieceType = cell.CurrentPiece.PieceMovement;
+        this.IsWhite = cell.CurrentPiece.PieceColor == ChessColor.w;
     }
 
-    public PieceRecord(PieceMovement pieceMovement,
+    public PieceRecord(PieceType pieceMovement,
         bool isWhite,
         int x,
         int y)
     {
         this.X = x;
         this.Y = y;
-        this.PieceMovement = pieceMovement;
+        this.PieceType = pieceMovement;
         this.IsWhite = isWhite;
     }
 
@@ -375,7 +413,7 @@ public struct PieceRecord
         {
             X = this.X,
             Y = this.Y,
-            PieceMovement = this.PieceMovement,
+            PieceType = this.PieceType,
             IsWhite = this.IsWhite
         };
     }

@@ -8,15 +8,15 @@ public class Solver : MonoBehaviour
     public Move GetNextMove(Board board)
     {
         PieceRecord?[,] boardData = ToBoardData(board);
-        var fen = FENParser.BoardToFEN(boardData, "b");
-        var nextMove = GetBestMove(fen, 2);
+        var fen = FENParser.BoardToFEN(boardData, board.Cells.GetLength(0), board.Cells.GetLength(1), "b");
+        var nextMove = GetBestMove(fen, board.Cells.GetLength(0), board.Cells.GetLength(1), 2);
 
         (int fromX, int fromY) from = FromIndex(nextMove.From);
         (int toX, int toY) to = FromIndex(nextMove.To);
 
         PieceRecord? piece = boardData[from.fromX, from.fromY];
 
-        Debug.Log($"Best Move: {piece.Value.PieceMovement} from {from} to {to}");
+        Debug.Log($"Best Move: {piece.Value.PieceType} from {from} to {to}");
         return nextMove;
     }
 
@@ -44,10 +44,10 @@ public class Solver : MonoBehaviour
         return (positionIndex % 8, positionIndex / 8);
     }
 
-    public static Move GetBestMove(string fen, int maxDepth)
+    public static Move GetBestMove(string fen, int rankMax, int fileMax, int maxDepth)
     {
-        ChessGameRecord game = new ChessGameRecord(fen);
-        Player currentPlayer = game.FenData.ActiveColor == "w" ? Player.w : Player.b;
+        ChessGameRecord game = new ChessGameRecord(fen, rankMax, fileMax);
+        ChessColor currentPlayer = game.FenData.ActiveColor;
         Stack<(ChessGameRecord, List<Move>, int)> stack = new Stack<(ChessGameRecord, List<Move>, int)>();
 
         stack.Push((game, new List<Move>(), 0));  // Push initial depth as 0
@@ -71,17 +71,17 @@ public class Solver : MonoBehaviour
             }
 
             List<Move> possibleMoves = GetValidMoves(currentGame, currentPlayer);
-            possibleMoves.Sort((a, b) => EvaluateMove(a, currentGame).CompareTo(EvaluateMove(b, currentGame))); // Least action heuristic
+            possibleMoves.Sort((a, b) => EvaluateMove(a, currentGame, rankMax, fileMax).CompareTo(EvaluateMove(b, currentGame, rankMax, fileMax))); // Least action heuristic
 
             foreach (var move in possibleMoves)
             {
-                ChessGameRecord newGame = new ChessGameRecord(currentGame.fen);
+                ChessGameRecord newGame = new ChessGameRecord(currentGame.fen, rankMax, fileMax);
                 newGame.MakeMove(move);
 
                 List<Move> newPath = new List<Move>(path) { move };
                 stack.Push((newGame, newPath, currentDepth + 1));  // Increment the depth
 
-                int moveScore = EvaluateMove(move, currentGame);
+                int moveScore = EvaluateMove(move, currentGame, rankMax, fileMax);
                 if (moveScore < bestScore)
                 {
                     bestScore = moveScore;
@@ -93,7 +93,7 @@ public class Solver : MonoBehaviour
         return bestMove;
     }
 
-    private static List<Move> GetValidMoves(ChessGameRecord game, Player player)
+    public static List<Move> GetValidMoves(ChessGameRecord game, ChessColor player)
     {
         List<Move> moves = new List<Move>();
 
@@ -109,52 +109,68 @@ public class Solver : MonoBehaviour
         return moves;
     }
 
-    private static bool IsCheckmate(ChessGameRecord game, Player player)
+    private static bool IsCheckmate(ChessGameRecord game, ChessColor player)
     {
         return game.IsInCheckmate(player);
     }
 
-    private static int EvaluateMove(Move move, ChessGameRecord game)
+    private static int EvaluateMove(Move move, ChessGameRecord game, int rankMax, int fileMax)
     {
         // Basic heuristic: prefer moves that lead to checkmate sooner
-        ChessGameRecord tempGame = new ChessGameRecord(game.fen);
+        ChessGameRecord tempGame = new ChessGameRecord(game.fen, rankMax, fileMax);
         tempGame.MakeMove(move);
 
-        if (tempGame.IsInCheckmate(tempGame.FenData.ActiveColor == "w" ? Player.w : Player.b))
+        if (tempGame.IsInCheckmate(tempGame.FenData.ActiveColor))
         {
             return 0; // Immediate checkmate is best
         }
 
-        return tempGame.IsInCheck(tempGame.FenData.ActiveColor == "w" ? Player.w : Player.b) ? 1 : 10; // Prefer checks over neutral moves
+        return tempGame.IsInCheck(tempGame.FenData.ActiveColor) ? 1 : 10; // Prefer checks over neutral moves
     }
 }
 
-internal struct ChessGameRecord
+public struct ChessGameRecord
 {
-    public ChessGameRecord(string fen)
+    public ChessGameRecord(string fen, int rankMax, int fileMax)
     {
         this.fen = fen;
-
+        this.rankMax = rankMax;
+        this.fileMax = fileMax;
         FenData = FENParser.ParseFEN(fen);
-        ChessBitboard = new ChessBitboard(fen);
+        ChessBitboard = new ChessBitboard(fen, rankMax, fileMax);
     }
 
     public string fen;
     public FENData FenData;
     public ChessBitboard ChessBitboard;
 
+    private readonly int rankMax;
+    private readonly int fileMax;
+
     internal IEnumerable<Move> GetValidMoves((int x, int y) position)
     {
-        int positionIndex = position.y * 8 + position.x;
+        int positionIndex = position.y * fileMax + position.x;
         return ChessBitboard.GetValidMoves(positionIndex);
     }
 
-    internal bool IsInCheck(Player whoseTurn)
+    internal IEnumerable<Move> GetValidMoves(PieceType pieceType, (int x, int y) position)
+    {
+        int positionIndex = position.y * fileMax + position.x;
+        return ChessBitboard.GetValidMoves(pieceType, positionIndex);
+    }
+
+    internal IEnumerable<Move> GetPlacableSquares(PieceType pieceType, (int x, int y) position)
+    {
+        int positionIndex = position.y * fileMax + position.x;
+        return ChessBitboard.GetPlacableSquares(pieceType, positionIndex);
+    }
+
+    internal bool IsInCheck(ChessColor whoseTurn)
     {
         return ChessBitboard.IsInCheck(whoseTurn);
     }
 
-    internal bool IsInCheckmate(Player player)
+    internal bool IsInCheckmate(ChessColor player)
     {
         return ChessBitboard.IsInCheckMate(player);
     }
@@ -165,7 +181,7 @@ internal struct ChessGameRecord
     }
 }
 
-public enum Player
+public enum ChessColor
 {
     w = 'w',
     b = 'b'

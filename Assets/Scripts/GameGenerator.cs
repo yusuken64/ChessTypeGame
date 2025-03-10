@@ -18,7 +18,7 @@ public class GameGenerator : MonoBehaviour
         PieceRecord startingPiece = new PieceRecord()
         {
             IsWhite = true,
-            PieceMovement = PieceMovement.King,
+            PieceType = PieceType.King,
             X = x,
             Y = y
         };
@@ -70,24 +70,17 @@ public class GameGenerator : MonoBehaviour
         return boardCopy;
     }
 
-#pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
-    private List<(int x, int y)>? FindSolution(PieceRecord?[,] board, PieceRecord startingPiece)
-#pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+    private List<(int x, int y)> FindSolution(PieceRecord?[,] board, PieceRecord startingPiece)
     {
         var count = board.OfType<PieceRecord>().Count();
         if (count == 0) { return new List<(int x, int y)> { (startingPiece.X, startingPiece.Y) }; }
 
-        List<(int x, int y)> movableSquares = Piece.GetByMovement(
-            board,
-            startingPiece.PieceMovement,
-            startingPiece.X,
-            startingPiece.Y,
-            PieceColor.White,
-            false);
+        var movableSquares = Board.GetMovableSquaresForPiece(board, startingPiece, ChessColor.w);
 
         foreach (var movableSquare in movableSquares)
         {
-            PieceRecord? piece = board[movableSquare.x, movableSquare.y];
+            (int x, int y) position = Board.FromIndex(movableSquare.To, board.GetLength(0));
+            PieceRecord? piece = board[position.x, position.y];
 
             if (piece.HasValue)
             {
@@ -113,49 +106,44 @@ public class GameGenerator : MonoBehaviour
             return true;
         }
 
-        var pieces = new List<PieceMovement>()
+        var pieces = new List<PieceType>()
         {
-            PieceMovement.King,
-            PieceMovement.Queen,
-            PieceMovement.Bishop,
-            PieceMovement.Rook,
-            PieceMovement.Knight,
-            PieceMovement.Pawn
+            PieceType.King,
+            PieceType.Queen,
+            PieceType.Bishop,
+            PieceType.Rook,
+            PieceType.Knight,
+            PieceType.Pawn
         };
         var pieceBag = pieces.OrderBy(x => Guid.NewGuid()).ToList();
-        PieceMovement nextPiece = default;
+        PieceType nextPiece = default;
 
         while (pieceBag.Any())
         {
             nextPiece = pieceBag.First();
             pieceBag.Remove(nextPiece);
 
-            var movableSquares = Piece.GetByMovement(
-                board,
-                lastPiece.Value.PieceMovement,
-                lastPiece.Value.X,
-                lastPiece.Value.Y,
-                PieceColor.White,
-                attackOnly);
+            var placableSquares = Board.GetPlacableSquaresForPiece(board, lastPiece);
 
-            var randomMovableSquares = movableSquares.OrderBy(x => Guid.NewGuid()).ToList();
-            foreach (var cell in randomMovableSquares)
+            var randomPlacableSquares = placableSquares.OrderBy(x => Guid.NewGuid()).ToList();
+            foreach (var cell in randomPlacableSquares)
             {
+                (int x, int y) position = Board.FromIndex(cell.To, board.GetLength(0));
                 PieceRecord? record = new PieceRecord()
                 {
                     IsWhite = false,
-                    PieceMovement = nextPiece,
-                    X = cell.x,
-                    Y = cell.y
+                    PieceType = nextPiece,
+                    X = position.x,
+                    Y = position.y
                 };
-                board[cell.x, cell.y] = record;
+                board[position.x, position.y] = record;
                 
                 if (PlacePieces(board, record, --count, true))
                 {
                     return true;
                 }
 
-                board[cell.x, cell.y] = null;
+                board[position.x, position.y] = null;
             }
         }
 
@@ -163,17 +151,17 @@ public class GameGenerator : MonoBehaviour
     }
 
     // Method to find a valid cell where nextPiece can capture the last piece
-    private static Cell FindCaptureCell(Cell lastCell, Cell[,] board)
+    private static Cell FindCaptureCell(Cell lastCell, Cell[,] cells)
     {
-        var movableSquares = lastCell.CurrentPiece.GetMovableSquares(board, lastCell, PieceColor.White, true);
+        //var originCell = cells.FirstOrDefault(cell => cell.CurrentPiece == piece);
+        //PieceRecord?[,] boardData2 = Solver.ToBoardData(this);
+        //var movableSquares = Board.GetMovableSquares(cells, Player.w);
+        //var movableSquares = lastCell.CurrentPiece.GetMovableSquares(cells, lastCell, PieceColor.White, true);
+        //if (movableSquares.Count > 0)
+        //{
+        //    return movableSquares.OrderBy(x => Guid.NewGuid()).First();
+        //}
 
-        // If there are valid capture cells, choose one (you could select based on a strategy)
-        if (movableSquares.Count > 0)
-        {
-            return movableSquares.OrderBy(x => Guid.NewGuid()).First(); // You can add a more advanced selection logic if necessary
-        }
-
-        // Return a default value (invalid capture) if no valid cell was found
         return null;
     }
 
@@ -199,5 +187,17 @@ public class GameGenerator : MonoBehaviour
     public void StartGame_5()
     {
         GenerateLevel(5);
+    }
+
+    [ContextMenu("StartGame_10")]
+    public void StartGame_10()
+    {
+        GenerateLevel(10);
+    }
+
+    [ContextMenu("StartGame_20")]
+    public void StartGame_20()
+    {
+        GenerateLevel(20);
     }
 }

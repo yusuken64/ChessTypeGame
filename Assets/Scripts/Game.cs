@@ -57,7 +57,7 @@ public class Game : MonoBehaviour
         var blackPieceCount = Board.Cells.Cast<Cell>()
             .Where(x => x.CurrentPiece != null)
             .Select(x => x.CurrentPiece)
-            .Count(x => x.PieceColor == PieceColor.Black);
+            .Count(x => x.PieceColor == ChessColor.b);
 
         if (blackPieceCount == 0)
         {
@@ -79,7 +79,7 @@ public class Game : MonoBehaviour
         Board.Cells.Cast<Cell>()
             .Where(x => x.CurrentPiece != null)
             .Select(x => x.CurrentPiece)
-            .Where(x => x.PieceColor == PieceColor.White)
+            .Where(x => x.PieceColor == ChessColor.w)
             .ToList().ForEach(x => x.GetComponent<Draggable>().IsDraggable = true);
         TimeLeft = TimeLimit;
         Score = 0;
@@ -154,7 +154,7 @@ public class Game : MonoBehaviour
         Board.Cells.Cast<Cell>()
             .Where(x => x.CurrentPiece != null)
             .Select(x => x.CurrentPiece)
-            .Where(x => x.PieceColor == PieceColor.White)
+            .Where(x => x.PieceColor == ChessColor.w)
             .ToList().ForEach(x => x.GetComponent<Draggable>().IsDraggable = false);
 
         //show prompt;
