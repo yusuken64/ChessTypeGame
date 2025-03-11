@@ -51,7 +51,7 @@ MonoBehaviour:
   CurrentSprite: {fileID: 6681393191630607035}
   WhiteSprite: {fileID: 601848764, guid: 9882bf368cb7e4d4cbe2ecd55c701305, type: 3}
   BlackSprite: {fileID: 1702224533, guid: 9882bf368cb7e4d4cbe2ecd55c701305, type: 3}
-  PieceMovement: 3
+  PieceType: 3
 --- !u!114 &7267938311870973577
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67,6 +67,7 @@ MonoBehaviour:
   GridLayer:
     serializedVersion: 2
     m_Bits: 256
+  IsDraggable: 0
 --- !u!212 &6681393191630607035
 SpriteRenderer:
   m_ObjectHideFlags: 0

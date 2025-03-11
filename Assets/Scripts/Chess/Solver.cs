@@ -1,22 +1,29 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 public class Solver : MonoBehaviour
 {
-    public Move GetNextMove(Board board)
+    [Range(2, 10)]
+    public int SolveDepth;
+    public List<WeightedEvaluator> Evaluators;
+    public Move GetNextMove(Board board, ChessColor chessColor)
     {
+
         PieceRecord?[,] boardData = ToBoardData(board);
-        var fen = FENParser.BoardToFEN(boardData, board.Cells.GetLength(0), board.Cells.GetLength(1), "b");
-        var nextMove = GetBestMove(fen, board.Cells.GetLength(0), board.Cells.GetLength(1), 2);
+        var fen = FENParser.BoardToFEN(boardData, board.Cells.GetLength(0), board.Cells.GetLength(1), chessColor.ToString());
+        var nextMove = GetBestMove(
+            fen,
+            board.Cells.GetLength(0),
+            board.Cells.GetLength(1),
+            SolveDepth,
+            chessColor);
 
-        (int fromX, int fromY) from = FromIndex(nextMove.From);
-        (int toX, int toY) to = FromIndex(nextMove.To);
-
-        PieceRecord? piece = boardData[from.fromX, from.fromY];
-
-        Debug.Log($"Best Move: {piece.Value.PieceType} from {from} to {to}");
+        //(int fromX, int fromY) from = FromIndex(nextMove.From);
+        //(int toX, int toY) to = FromIndex(nextMove.To);
+        //PieceRecord? piece = boardData[from.fromX, from.fromY];
+        //Debug.Log($"Best Move: {piece.Value.PieceType} from {from} to {to}");
         return nextMove;
     }
 
@@ -39,58 +46,120 @@ public class Solver : MonoBehaviour
         return boardData;
     }
 
-    public (int x, int y) FromIndex(int positionIndex)
+    public Move GetBestMove(string fen, int rankMax, int fileMax, int maxDepth, ChessColor currentPlayer)
     {
-        return (positionIndex % 8, positionIndex / 8);
-    }
-
-    public static Move GetBestMove(string fen, int rankMax, int fileMax, int maxDepth)
-    {
+        bool moveFound = false;
         ChessGameRecord game = new ChessGameRecord(fen, rankMax, fileMax);
-        ChessColor currentPlayer = game.FenData.ActiveColor;
-        Stack<(ChessGameRecord, List<Move>, int)> stack = new Stack<(ChessGameRecord, List<Move>, int)>();
-
-        stack.Push((game, new List<Move>(), 0));  // Push initial depth as 0
-
         Move bestMove = default;
-        int bestScore = int.MaxValue;
+        int bestScore = int.MinValue; // Start maximizing
 
-        while (stack.Count > 0)
+        List<Move> possibleMoves = GetValidMoves(game, currentPlayer);
+
+        foreach (var move in possibleMoves.OrderBy(x => Guid.NewGuid()))
         {
-            var (currentGame, path, currentDepth) = stack.Pop();
+            ChessGameRecord newGame = new ChessGameRecord(game.fen, rankMax, fileMax);
+            newGame.MakeMove(move);
 
-            // If we've reached the max depth, don't explore further
-            if (currentDepth >= maxDepth)
+            if (newGame.IsInCheck(currentPlayer)) { continue; } // Skip illegal moves
+
+            moveFound = true;
+            int moveScore = Minimax(newGame, maxDepth - 1, false, rankMax, fileMax, currentPlayer);
+
+            //Debug.Log($"Score {moveScore}");
+
+            if (moveScore > bestScore)
             {
-                continue;
-            }
-
-            if (IsCheckmate(currentGame, currentPlayer))
-            {
-                return path.Count > 0 ? path[0] : default;
-            }
-
-            List<Move> possibleMoves = GetValidMoves(currentGame, currentPlayer);
-            possibleMoves.Sort((a, b) => EvaluateMove(a, currentGame, rankMax, fileMax).CompareTo(EvaluateMove(b, currentGame, rankMax, fileMax))); // Least action heuristic
-
-            foreach (var move in possibleMoves)
-            {
-                ChessGameRecord newGame = new ChessGameRecord(currentGame.fen, rankMax, fileMax);
-                newGame.MakeMove(move);
-
-                List<Move> newPath = new List<Move>(path) { move };
-                stack.Push((newGame, newPath, currentDepth + 1));  // Increment the depth
-
-                int moveScore = EvaluateMove(move, currentGame, rankMax, fileMax);
-                if (moveScore < bestScore)
-                {
-                    bestScore = moveScore;
-                    bestMove = move;
-                }
+                bestScore = moveScore;
+                bestMove = move;
             }
         }
 
+        if (!moveFound)
+        {
+            throw new Exception("No legal moves");
+        }
         return bestMove;
+    }
+
+    private int Minimax(ChessGameRecord game, int depth, bool isMaximizing, int rankMax, int fileMax, ChessColor currentPlayer)
+    {
+        ChessColor enemyColor = currentPlayer == ChessColor.w ? ChessColor.b : ChessColor.w;
+
+        if (depth == 0 || IsCheckmate(game, enemyColor) || IsCheckmate(game, currentPlayer))
+        {
+            return EvaluateBoard(game, rankMax, fileMax, currentPlayer);
+        }
+
+        List<Move> possibleMoves = GetValidMoves(game, isMaximizing ? currentPlayer : enemyColor);
+
+        if (isMaximizing)
+        {
+            int bestScore = int.MinValue;
+            foreach (var move in possibleMoves)
+            {
+                ChessGameRecord newGame = new ChessGameRecord(game.fen, rankMax, fileMax);
+                newGame.MakeMove(move);
+
+                if (newGame.IsInCheck(currentPlayer)) { continue; }
+
+                int score = Minimax(newGame, depth - 1, false, rankMax, fileMax, currentPlayer);
+                bestScore = Math.Max(bestScore, score);
+            }
+            return bestScore;
+        }
+        else // Minimizing for opponent
+        {
+            int bestScore = int.MaxValue;
+            foreach (var move in possibleMoves)
+            {
+                ChessGameRecord newGame = new ChessGameRecord(game.fen, rankMax, fileMax);
+                newGame.MakeMove(move);
+
+                if (newGame.IsInCheck(enemyColor)) { continue; }
+
+                int score = Minimax(newGame, depth - 1, true, rankMax, fileMax, currentPlayer);
+                bestScore = Math.Min(bestScore, score);
+            }
+            return bestScore;
+        }
+    }
+
+    private int EvaluateBoard(ChessGameRecord game, int rankMax, int fileMax, ChessColor currentPlayer)
+    {
+        int score = 0;
+        ChessColor enemyColor = currentPlayer == ChessColor.w ? ChessColor.b : ChessColor.w;
+
+        foreach(var evaluator in Evaluators)
+        {
+            var evaluatorScore = evaluator.Evaluator.Score(game, currentPlayer);
+            score += (int)(evaluatorScore * evaluator.Weight);
+        }
+
+        //// King Safety Consideration
+        if (IsCheckmate(game, enemyColor))
+        {
+            return int.MaxValue; // Winning position
+        }
+        if (IsCheckmate(game, currentPlayer))
+        {
+            return int.MinValue; // Losing position
+        }
+
+        return score;
+    }
+
+    public static int GetPieceValue(PieceType piece)
+    {
+        return piece switch
+        {
+            PieceType.Pawn => 1,
+            PieceType.Knight => 3,
+            PieceType.Bishop => 3,
+            PieceType.Rook => 5,
+            PieceType.Queen => 9,
+            PieceType.King => 1000, // Arbitrary high value to prioritize king safety
+            _ => 0
+        };
     }
 
     public static List<Move> GetValidMoves(ChessGameRecord game, ChessColor player)
@@ -114,87 +183,8 @@ public class Solver : MonoBehaviour
         return game.IsInCheckmate(player);
     }
 
-    private static int EvaluateMove(Move move, ChessGameRecord game, int rankMax, int fileMax)
+    public static ChessColor OtherColor(ChessColor color)
     {
-        // Basic heuristic: prefer moves that lead to checkmate sooner
-        ChessGameRecord tempGame = new ChessGameRecord(game.fen, rankMax, fileMax);
-        tempGame.MakeMove(move);
-
-        if (tempGame.IsInCheckmate(tempGame.FenData.ActiveColor))
-        {
-            return 0; // Immediate checkmate is best
-        }
-
-        return tempGame.IsInCheck(tempGame.FenData.ActiveColor) ? 1 : 10; // Prefer checks over neutral moves
-    }
-}
-
-public struct ChessGameRecord
-{
-    public ChessGameRecord(string fen, int rankMax, int fileMax)
-    {
-        this.fen = fen;
-        this.rankMax = rankMax;
-        this.fileMax = fileMax;
-        FenData = FENParser.ParseFEN(fen);
-        ChessBitboard = new ChessBitboard(fen, rankMax, fileMax);
-    }
-
-    public string fen;
-    public FENData FenData;
-    public ChessBitboard ChessBitboard;
-
-    private readonly int rankMax;
-    private readonly int fileMax;
-
-    internal IEnumerable<Move> GetValidMoves((int x, int y) position)
-    {
-        int positionIndex = position.y * fileMax + position.x;
-        return ChessBitboard.GetValidMoves(positionIndex);
-    }
-
-    internal IEnumerable<Move> GetValidMoves(PieceType pieceType, (int x, int y) position)
-    {
-        int positionIndex = position.y * fileMax + position.x;
-        return ChessBitboard.GetValidMoves(pieceType, positionIndex);
-    }
-
-    internal IEnumerable<Move> GetPlacableSquares(PieceType pieceType, (int x, int y) position)
-    {
-        int positionIndex = position.y * fileMax + position.x;
-        return ChessBitboard.GetPlacableSquares(pieceType, positionIndex);
-    }
-
-    internal bool IsInCheck(ChessColor whoseTurn)
-    {
-        return ChessBitboard.IsInCheck(whoseTurn);
-    }
-
-    internal bool IsInCheckmate(ChessColor player)
-    {
-        return ChessBitboard.IsInCheckMate(player);
-    }
-
-    internal void MakeMove(Move move)
-    {
-        ChessBitboard.MakeMove(move);
-    }
-}
-
-public enum ChessColor
-{
-    w = 'w',
-    b = 'b'
-}
-
-public struct Move
-{
-    public int From;
-    public int To;
-
-    public Move(int from, int to)
-    {
-        From = from;
-        To = to;
+        return color == ChessColor.w ? ChessColor.b : ChessColor.w;
     }
 }

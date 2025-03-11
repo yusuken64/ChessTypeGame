@@ -26,10 +26,28 @@ public class Board : MonoBehaviour
     public Piece KnightPrefab;
     public Piece PawnPrefab;
 
-    public delegate void PieceMovedDelegate(Piece movedPiece, Piece capturedPiece);
+    public delegate void PieceMovedDelegate(Piece movedPiece, Cell originalCell, Piece capturedPiece, Cell newCell);
     public PieceMovedDelegate PieceMoved;
 
     public Solution Solution { get; private set; }
+
+    //check if it causes check
+    internal bool CanDrop(Piece piece, Cell cell)
+    {
+        if (cell == null) { return false; }
+
+        var originalCell = Cells.OfType<Cell>().First(x => x.CurrentPiece == piece);
+        PieceRecord?[,] boardData = Solver.ToBoardData(this);
+        var originalRecord = boardData[originalCell.X, originalCell.Y];
+        boardData[originalCell.X, originalCell.Y] = null;
+        boardData[cell.X, cell.Y] = originalRecord;
+
+        string fen = FENParser.BoardToFEN(boardData, boardData.GetLength(0), boardData.GetLength(1));
+        ChessGameRecord game = new ChessGameRecord(fen, boardData.GetLength(0), boardData.GetLength(1));
+        var isInCheck = game.IsInCheck(piece.PieceColor);
+
+        return !isInCheck;
+    }
 
     void Start()
     {
@@ -321,12 +339,12 @@ public class Board : MonoBehaviour
                             Destroy(originalPiece.gameObject);
                             newCell.CaptureEcho(piece);
 
-                            PieceMoved?.Invoke(originalPiece, piece);
+                            PieceMoved?.Invoke(originalPiece, originalCell, piece, newCell);
                         }
                         else
                         {
                             newCell.SetPiece(piece);
-                            PieceMoved?.Invoke(originalPiece, null);
+                            PieceMoved?.Invoke(originalPiece, originalCell, null, newCell);
                         }
                     }
                     else
@@ -337,12 +355,12 @@ public class Board : MonoBehaviour
                             //capture
                             Destroy(newCell.CurrentPiece.gameObject);
                             newCell.Capture(piece);
-                            PieceMoved?.Invoke(originalPiece, piece);
+                            PieceMoved?.Invoke(originalPiece, originalCell, piece, newCell);
                         }
                         else
                         {
                             newCell.SetPiece(piece);
-                            PieceMoved?.Invoke(originalPiece, null);
+                            PieceMoved?.Invoke(originalPiece, originalCell, null, newCell);
                         }
                     }
                 }
@@ -357,8 +375,6 @@ public class Board : MonoBehaviour
             var originalCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == piece);
             originalCell.ResetPiece();
         }
-
-        Cells.Cast<Cell>().ToList().ForEach(x => x.ClearDroppable());
     }
 
     public static (int, int) FindCellIndex<T>(T[,] grid, T target)
@@ -392,7 +408,7 @@ public struct PieceRecord
     {
         this.X = cell.X;
         this.Y = cell.Y;
-        this.PieceType = cell.CurrentPiece.PieceMovement;
+        this.PieceType = cell.CurrentPiece.PieceType;
         this.IsWhite = cell.CurrentPiece.PieceColor == ChessColor.w;
     }
 

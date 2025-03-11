@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 
 public class Piece : MonoBehaviour
@@ -7,7 +8,7 @@ public class Piece : MonoBehaviour
     public Sprite WhiteSprite;
     public Sprite BlackSprite;
 
-    public PieceType PieceMovement;
+    public PieceType PieceType;
 
     private void Start()
     {
@@ -27,7 +28,21 @@ public class Piece : MonoBehaviour
         draggable.OnReleased = (cell) =>
         {
             var board = FindObjectOfType<Board>();
-            board.PieceDropped(this, cell);
+            if (board.CanDrop(this, cell))
+            {
+                board.PieceDropped(this, cell);
+            }
+            else
+            {
+                //Debug.Log("Can't place there!");
+
+                //reset dropped piece
+                var cells = board.Cells.Cast<Cell>().ToList();
+                var thisCell = cells.First(x => x.CurrentPiece == this);
+                thisCell.ResetPiece();
+            }
+
+            board.Cells.Cast<Cell>().ToList().ForEach(x => x.ClearDroppable());
         };
     }
 

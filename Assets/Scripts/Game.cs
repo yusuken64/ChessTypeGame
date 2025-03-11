@@ -29,15 +29,15 @@ public class Game : MonoBehaviour
 
     private void Awake()
     {
-        Board.PieceMoved += Board_PieceCaptured;
+        Board.PieceMoved += Board_PieceMoved;
     }
 
     private void OnDestroy()
     {
-        Board.PieceMoved -= Board_PieceCaptured;
+        Board.PieceMoved -= Board_PieceMoved;
     }
 
-    private void Board_PieceCaptured(Piece originalPiece, Piece capturedPiece)
+    private void Board_PieceMoved(Piece originalPiece, Cell originalCell, Piece capturedPiece, Cell newCell)
     {
         if (capturedPiece == null)
         {

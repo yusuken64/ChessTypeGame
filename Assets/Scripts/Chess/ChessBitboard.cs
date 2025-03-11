@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 public struct ChessBitboard
 {
+    public static Array PIECE_TYPES = Enum.GetValues(typeof(PieceType));
+
     // Each bitboard represents a piece type for a specific color
     public ulong WhitePawns;
     public ulong BlackPawns;
@@ -16,11 +18,6 @@ public struct ChessBitboard
     public ulong BlackQueens;
     public ulong WhiteKings;
     public ulong BlackKings;
-
-    public static readonly ulong FileA = 0x0101010101010101;  // Mask for the a-file (1st column)
-    public static readonly ulong FileB = 0x0202020202020202;  // Mask for the b-file (2nd column)
-    public static readonly ulong FileG = 0x4000400040004000;  // Mask for the g-file (7th column)
-    public static readonly ulong FileH = 0x8080808080808080;  // Mask for the h-file (8th column)
 
     private int _rankMax;
     private int _fileMax;
@@ -106,16 +103,6 @@ public struct ChessBitboard
             default:
                 throw new ArgumentException("Invalid piece character in FEN string.");
         }
-    }
-
-    internal bool IsInCheck(ChessColor player)
-    {
-        return false;
-    }
-
-    internal bool IsInCheckMate(ChessColor player)
-    {
-        return false;
     }
 
     public IEnumerable<Move> GetValidMoves(int positionIndex)
@@ -210,7 +197,6 @@ public struct ChessBitboard
                 return GetKnightMoves(positionIndex, ChessColor.w);
             case PieceType.Pawn:
                 return GetPawnMoves(positionIndex, ChessColor.w);
-                //return GetPlacablePawnMoves(positionIndex, ChessColor.w);
         }
 
         return new List<Move>();
@@ -243,10 +229,11 @@ public struct ChessBitboard
     {
         List<Move> moves = new List<Move>();
 
-        var boardSize = _fileMax;
+        int boardSize = _fileMax;  // Number of files (columns)
+        int rankCount = _rankMax;  // Number of ranks (rows)
 
         int direction = (color == ChessColor.w) ? boardSize : -boardSize; // White moves up, Black moves down
-        int startRank = (color == ChessColor.w) ? 0 : (boardSize - 2) * boardSize; // First rank for each color
+        int startRank = (color == ChessColor.w) ? 1 : (rankCount - 2); // Adapt to custom board sizes
 
         int forwardOne = positionIndex + direction;
         int forwardTwo = positionIndex + (2 * direction);
@@ -257,14 +244,15 @@ public struct ChessBitboard
         if (IsOnBoard(forwardOne) && IsSquareEmpty(forwardOne))
             moves.Add(new Move(positionIndex, forwardOne));
 
-        // First move can be two squares forward
-        if (positionIndex >= startRank && positionIndex < startRank + boardSize &&
-            IsOnBoard(forwardTwo) && IsSquareEmpty(forwardOne) && IsSquareEmpty(forwardTwo))
+        // First move can be two squares forward if pawn is on the starting rank
+        if ((positionIndex / boardSize) == startRank && IsOnBoard(forwardTwo) &&
+            IsSquareEmpty(forwardOne) && IsSquareEmpty(forwardTwo))
             moves.Add(new Move(positionIndex, forwardTwo));
 
         // Capture diagonally (ensure it doesn't wrap around the board)
         if (positionIndex % boardSize > 0 && IsOnBoard(leftCapture) && IsEnemyPieceAt(leftCapture, color))
             moves.Add(new Move(positionIndex, leftCapture));
+
         if (positionIndex % boardSize < boardSize - 1 && IsOnBoard(rightCapture) && IsEnemyPieceAt(rightCapture, color))
             moves.Add(new Move(positionIndex, rightCapture));
 
@@ -618,7 +606,7 @@ public struct ChessBitboard
         }
     }
 
-    internal void MakeMove(Move move)
+    public void MakeMove(Move move)
     {
         var startPosition = (int)move.From;
         var endPosition = (int)move.To;
@@ -726,6 +714,121 @@ public struct ChessBitboard
         }
 
         SetPiece(endPosition, pieceColor, pieceType);
+    }
+
+    public bool IsKingInCheck(ChessColor kingColor)
+    {
+        // Get the king's position
+        ulong kingBitboard = kingColor == ChessColor.w ? WhiteKings : BlackKings;
+        int kingPosition = BitScanForward(kingBitboard);
+        if (kingPosition == -1) return false; // King not found
+
+        // Iterate over all opponent pieces and check if they can move to the king's position
+        ChessColor opponentColor = kingColor == ChessColor.w ? ChessColor.b : ChessColor.w;
+
+        // Check all possible attacking pieces
+        foreach (PieceType pieceType in PIECE_TYPES)
+        {
+            // Get all positions of this piece type for the opponent
+            ulong pieceBitboard = GetPieceBitboard(opponentColor, pieceType);
+
+            while (pieceBitboard != 0)
+            {
+                int piecePosition = BitScanForward(pieceBitboard);
+                pieceBitboard &= pieceBitboard - 1; // Remove the least significant bit
+
+                // Get all valid moves for this piece
+                IEnumerable<Move> moves = GetValidMoves(piecePosition);
+
+                // If any move can capture the king, return true (king is in check)
+                foreach (Move move in moves)
+                {
+                    if (move.To == kingPosition)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    internal bool IsInCheckMate(ChessColor player)
+    {
+        // If the king is not in check, it's not checkmate.
+        if (!IsKingInCheck(player))
+        {
+            return false;
+        }
+
+        var originalState = Clone();
+
+        // Iterate over all pieces of the player and check if any move can escape check
+        foreach (PieceType pieceType in PIECE_TYPES)
+        {
+            ulong pieceBitboard = GetPieceBitboard(player, pieceType);
+
+            while (pieceBitboard != 0)
+            {
+                int piecePosition = BitScanForward(pieceBitboard);
+                pieceBitboard &= pieceBitboard - 1; // Remove the least significant bit
+
+                // Get all valid moves for this piece
+                IEnumerable<Move> moves = GetValidMoves(piecePosition);
+
+                foreach (Move move in moves)
+                {
+                    ChessBitboard state = originalState.Clone();
+                    state.MakeMove(move);
+
+                    // If the king is no longer in check, it's not checkmate
+                    bool stillInCheck = state.IsKingInCheck(player);
+
+                    if (!stillInCheck)
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // No legal move found that escapes check, it's checkmate
+        return true;
+    }
+
+    private ChessBitboard Clone()
+    {
+        return new ChessBitboard()
+        {
+            WhitePawns = this.WhitePawns,
+            BlackPawns = this.BlackPawns,
+            WhiteKnights = this.WhiteKnights,
+            BlackKnights = this.BlackKnights,
+            WhiteBishops = this.WhiteBishops,
+            BlackBishops = this.BlackBishops,
+            WhiteRooks = this.WhiteRooks,
+            BlackRooks = this.BlackRooks,
+            WhiteQueens = this.WhiteQueens,
+            BlackQueens = this.BlackQueens,
+            WhiteKings = this.WhiteKings,
+            BlackKings = this.BlackKings,
+            _rankMax = this._rankMax,
+            _fileMax = this._fileMax,
+        };
+    }
+
+    private int BitScanForward(ulong bitboard)
+    {
+        if (bitboard == 0) return -1; // No bits set
+
+        int index = 0;
+        while ((bitboard & 1) == 0)
+        {
+            bitboard >>= 1;
+            index++;
+        }
+        return index;
     }
 }
 

@@ -6,14 +6,14 @@ public class FENParser
 {
     public static string STANDARDGAMESETUP = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-    public static FENData ParseFEN(string fen)
+    public static FENData ParseFEN(string fen, int rankMax, int fileMax)
     {
+        string[] parts = fen.Split(' ');
         FENData fenData = new FENData
         {
-            Pieces = new List<FenRecord>()
+            Pieces = new List<FenRecord>(),
         };
 
-        string[] parts = fen.Split(' ');
         string board = parts[0]; // The piece placement data
         fenData.ActiveColor = parts[1] == "w" ? ChessColor.w : ChessColor.b;
         fenData.CastlingRights = parts[2];
@@ -21,7 +21,7 @@ public class FENParser
         fenData.HalfMoveClock = parts[4];
         fenData.FullMoveNumber = parts[5];
 
-        int y = 7; // Start from rank 8 (FEN starts from the top row)
+        int y = fileMax - 1; //(FEN starts from the top row)
         int x = 0;
 
         foreach (char c in board)
@@ -96,7 +96,7 @@ public class FENParser
     }
 
     // Converts a PieceMovement to FEN character
-    private static char ToFEN(PieceType piece, bool isWhite)
+    public static char ToFEN(PieceType piece, bool isWhite)
     {
         return piece switch
         {
