@@ -28,12 +28,13 @@ public class Piece : MonoBehaviour
         draggable.OnReleased = (cell) =>
         {
             var board = FindObjectOfType<Board>();
-            if (board.CanDrop(this, cell))
+            if (board.CanDrop(this, cell, out string reason))
             {
                 board.PieceDropped(this, cell);
             }
             else
             {
+                board.PieceDroppedCanceled(this, cell, reason);
                 //Debug.Log("Can't place there!");
 
                 //reset dropped piece

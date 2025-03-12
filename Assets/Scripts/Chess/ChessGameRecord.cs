@@ -41,9 +41,9 @@ public struct ChessGameRecord
         return ChessBitboard.IsKingInCheck(whoseTurn);
     }
 
-    internal bool IsInCheckmate(ChessColor player)
+    internal (bool isCheckmate, bool isStalemate, bool isCheck) CheckGameOver(ChessColor player)
     {
-        return ChessBitboard.IsInCheckMate(player);
+        return ChessBitboard.CheckGameOver(player);
     }
 
     internal void MakeMove(Move move)

@@ -10,7 +10,6 @@ public class Solver : MonoBehaviour
     public List<WeightedEvaluator> Evaluators;
     public Move GetNextMove(Board board, ChessColor chessColor)
     {
-
         PieceRecord?[,] boardData = ToBoardData(board);
         var fen = FENParser.BoardToFEN(boardData, board.Cells.GetLength(0), board.Cells.GetLength(1), chessColor.ToString());
         var nextMove = GetBestMove(
@@ -62,13 +61,14 @@ public class Solver : MonoBehaviour
 
             if (newGame.IsInCheck(currentPlayer)) { continue; } // Skip illegal moves
 
-            moveFound = true;
             int moveScore = Minimax(newGame, maxDepth - 1, false, rankMax, fileMax, currentPlayer);
 
             //Debug.Log($"Score {moveScore}");
 
-            if (moveScore > bestScore)
+            if (!moveFound ||
+                moveScore > bestScore )
             {
+                moveFound = true;
                 bestScore = moveScore;
                 bestMove = move;
             }
@@ -85,9 +85,12 @@ public class Solver : MonoBehaviour
     {
         ChessColor enemyColor = currentPlayer == ChessColor.w ? ChessColor.b : ChessColor.w;
 
-        if (depth == 0 || IsCheckmate(game, enemyColor) || IsCheckmate(game, currentPlayer))
+        (bool isCheckmate, bool isStalemate, bool isCheck) gameOverPlayer = CheckGameOver(game, currentPlayer);
+        (bool isCheckmate, bool isStalemate, bool isCheck) gameOverEnemy = CheckGameOver(game, enemyColor);
+
+        if (depth == 0 || gameOverPlayer.isCheckmate || gameOverEnemy.isCheckmate)
         {
-            return EvaluateBoard(game, rankMax, fileMax, currentPlayer);
+            return EvaluateBoard(game, currentPlayer, gameOverPlayer, gameOverEnemy);
         }
 
         List<Move> possibleMoves = GetValidMoves(game, isMaximizing ? currentPlayer : enemyColor);
@@ -124,10 +127,13 @@ public class Solver : MonoBehaviour
         }
     }
 
-    private int EvaluateBoard(ChessGameRecord game, int rankMax, int fileMax, ChessColor currentPlayer)
+    private int EvaluateBoard(
+        ChessGameRecord game,
+        ChessColor currentPlayer,
+        (bool isCheckmate, bool isStalemate, bool isCheck) gameOverPlayer,
+        (bool isCheckmate, bool isStalemate, bool isCheck) gameOverEnemy)
     {
         int score = 0;
-        ChessColor enemyColor = currentPlayer == ChessColor.w ? ChessColor.b : ChessColor.w;
 
         foreach(var evaluator in Evaluators)
         {
@@ -135,14 +141,34 @@ public class Solver : MonoBehaviour
             score += (int)(evaluatorScore * evaluator.Weight);
         }
 
-        //// King Safety Consideration
-        if (IsCheckmate(game, enemyColor))
+        // King Safety Consideration
+        if (gameOverEnemy.isCheckmate)
         {
             return int.MaxValue; // Winning position
         }
-        if (IsCheckmate(game, currentPlayer))
+        if (gameOverPlayer.isCheckmate)
         {
             return int.MinValue; // Losing position
+        }
+
+        // Handle Stalemate conditions
+        if (gameOverEnemy.isStalemate)
+        {
+            score += 10; // Slightly favorable for the currentPlayer (Stalemate for the opponent)
+        }
+        if (gameOverPlayer.isStalemate)
+        {
+            score -= 10; // Slightly unfavorable for the currentPlayer (Stalemate for the currentPlayer)
+        }
+
+        // Handle Check conditions
+        if (gameOverEnemy.isCheck)
+        {
+            score += 50; // Favorable for the currentPlayer (Opponent is in check)
+        }
+        if (gameOverPlayer.isCheck)
+        {
+            score -= 50; // Unfavorable for the currentPlayer (Player is in check)
         }
 
         return score;
@@ -178,9 +204,9 @@ public class Solver : MonoBehaviour
         return moves;
     }
 
-    private static bool IsCheckmate(ChessGameRecord game, ChessColor player)
+    private static (bool isCheckmate, bool isStalemate, bool isCheck) CheckGameOver(ChessGameRecord game, ChessColor player)
     {
-        return game.IsInCheckmate(player);
+        return game.CheckGameOver(player);
     }
 
     public static ChessColor OtherColor(ChessColor color)

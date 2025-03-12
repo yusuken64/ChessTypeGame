@@ -29,12 +29,17 @@ public class Board : MonoBehaviour
     public delegate void PieceMovedDelegate(Piece movedPiece, Cell originalCell, Piece capturedPiece, Cell newCell);
     public PieceMovedDelegate PieceMoved;
 
+    public delegate void PieceCanceledDelegate(Piece movedPiece, Cell originalCell, string reason);
+    public PieceCanceledDelegate PieceCanceled;
+
     public Solution Solution { get; private set; }
 
     //check if it causes check
-    internal bool CanDrop(Piece piece, Cell cell)
+    internal bool CanDrop(Piece piece, Cell cell, out string reason)
     {
+        reason = string.Empty;
         if (cell == null) { return false; }
+        if (Echo) { return true; }
 
         var originalCell = Cells.OfType<Cell>().First(x => x.CurrentPiece == piece);
         PieceRecord?[,] boardData = Solver.ToBoardData(this);
@@ -46,6 +51,10 @@ public class Board : MonoBehaviour
         ChessGameRecord game = new ChessGameRecord(fen, boardData.GetLength(0), boardData.GetLength(1));
         var isInCheck = game.IsInCheck(piece.PieceColor);
 
+        if (isInCheck)
+        {
+            reason = "Check";
+        }
         return !isInCheck;
     }
 
@@ -104,6 +113,36 @@ public class Board : MonoBehaviour
         });
 
         SetState(boardRecord.OfType<PieceRecord>());
+    }
+
+    internal void ReplacePiece(Cell destinationCell, PieceType promotionChoice, Piece originalPiece)
+    {
+        Destroy(destinationCell.CurrentPiece.gameObject);
+        destinationCell.CurrentPiece = null;
+
+        switch (promotionChoice)
+        {
+            case PieceType.King:
+                destinationCell.SetPiece_BlackKing();
+                break;
+            case PieceType.Queen:
+                destinationCell.SetPiece_BlackQueen();
+                break;
+            case PieceType.Bishop:
+                destinationCell.SetPiece_BlackBishop();
+                break;
+            case PieceType.Rook:
+                destinationCell.SetPiece_BlackRook();
+                break;
+            case PieceType.Knight:
+                destinationCell.SetPiece_BlackKnight();
+                break;
+            case PieceType.Pawn:
+                destinationCell.SetPiece_BlackPawn();
+                break;
+        }
+
+        destinationCell.CurrentPiece.SetColor(originalPiece.PieceColor);
     }
 
     private void ReloadExistingBoard()
@@ -359,7 +398,7 @@ public class Board : MonoBehaviour
                         }
                         else
                         {
-                            newCell.SetPiece(piece);
+                            newCell.SetPiece(piece, false);
                             PieceMoved?.Invoke(originalPiece, originalCell, null, newCell);
                         }
                     }
@@ -375,6 +414,11 @@ public class Board : MonoBehaviour
             var originalCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == piece);
             originalCell.ResetPiece();
         }
+    }
+
+    public void PieceDroppedCanceled(Piece piece, Cell cell, string reason)
+    {
+        PieceCanceled?.Invoke(piece, cell, reason);
     }
 
     public static (int, int) FindCellIndex<T>(T[,] grid, T target)

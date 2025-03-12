@@ -1,6 +1,7 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class UI : MonoBehaviour
@@ -126,5 +127,10 @@ public class UI : MonoBehaviour
         ResignButton.gameObject.SetActive(false);
         BackgroundSpriteRenderer.color = GameOverColor;
         AudioManager.Instance.PlayMusic(AudioManager.Instance.MainMenuMusic, false);
+    }
+
+    public void Chess_Clicked()
+    {
+        SceneManager.LoadScene("Chess");
     }
 }

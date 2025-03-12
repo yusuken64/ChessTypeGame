@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System;
 using UnityEngine;
 
@@ -150,27 +151,35 @@ public class Cell : MonoBehaviour
 
     internal void Capture(Piece piece)
     {
-        SetPiece(piece);
+        SetPiece(piece, false);
     }
 
-    internal void SetPiece(Piece piece)
+    internal void SetPiece(Piece piece, bool immediate = true)
     {
         CurrentPiece = piece;
         if (CurrentPiece != null)
         {
-            SnapToCell();
+            SnapToCell(immediate);
         }
     }
 
-    private void SnapToCell()
+    private void SnapToCell(bool immediate)
     {
-        CurrentPiece.transform.position = this.transform.position + new Vector3(0, 0, -0.1f);
+        if (immediate)
+        {
+            CurrentPiece.transform.position = this.transform.position + new Vector3(0, 0, -0.1f);
+        }
+        else
+        {
+            CurrentPiece.transform.DOMove(this.transform.position + new Vector3(0, 0, -0.1f),
+                0.3f);
+        }
     }
 
     internal void ResetPiece()
     {
         AudioManager.Instance?.PlaySFX(AudioManager.Instance.Error);
-        SnapToCell();
+        SnapToCell(true);
     }
 
     internal void SetToDroppable()

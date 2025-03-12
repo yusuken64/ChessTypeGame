@@ -33,25 +33,32 @@ public struct ChessBitboard
         WhiteBishops = BlackBishops = WhiteRooks = BlackRooks = 0;
         WhiteQueens = BlackQueens = WhiteKings = BlackKings = 0;
 
-        // Split the FEN into board layout and other parts
-        var fenParts = fen.Split(' ');
-        var boardLayout = fenParts[0].Split('/');
+        // Split only if there is enough data
+        var spaceIndex = fen.IndexOf(' ');
+        if (spaceIndex == -1) throw new ArgumentException("Invalid FEN format.");
 
-        // Parse the board layout
+        string boardData = fen[..spaceIndex]; // Get only board layout
+        var boardLayout = boardData.Split('/');
+
+        if (boardLayout.Length != rankMax)
+            throw new ArgumentException("Invalid FEN: Rank count mismatch.");
+
+        int rankOffset = rankMax - 1;
         for (int rank = 0; rank < rankMax; rank++)
         {
             string rankString = boardLayout[rank];
             int file = 0;
 
-            foreach (char c in rankString)
+            for (int i = 0; i < rankString.Length; i++)
             {
-                if (char.IsDigit(c)) // Empty squares
+                char c = rankString[i];
+                if (c >= '1' && c <= '8') // Numeric empty squares
                 {
-                    file += (int)char.GetNumericValue(c);
+                    file += c - '0';
                 }
                 else // Piece present
                 {
-                    SetPieceForFEN(c, rankMax - 1 - rank, file);
+                    SetPieceForFEN(c, rankOffset - rank, file);
                     file++;
                 }
             }
@@ -62,47 +69,20 @@ public struct ChessBitboard
     private void SetPieceForFEN(char piece, int rank, int file)
     {
         int position = (rank * _fileMax) + file;
-        switch (piece)
+        ChessColor color = char.IsUpper(piece) ? ChessColor.w : ChessColor.b;
+
+        PieceType type = piece switch
         {
-            case 'P':
-                SetPiece(position, ChessColor.w, PieceType.Pawn);
-                break;
-            case 'p':
-                SetPiece(position, ChessColor.b, PieceType.Pawn);
-                break;
-            case 'N':
-                SetPiece(position, ChessColor.w, PieceType.Knight);
-                break;
-            case 'n':
-                SetPiece(position, ChessColor.b, PieceType.Knight);
-                break;
-            case 'B':
-                SetPiece(position, ChessColor.w, PieceType.Bishop);
-                break;
-            case 'b':
-                SetPiece(position, ChessColor.b, PieceType.Bishop);
-                break;
-            case 'R':
-                SetPiece(position, ChessColor.w, PieceType.Rook);
-                break;
-            case 'r':
-                SetPiece(position, ChessColor.b, PieceType.Rook);
-                break;
-            case 'Q':
-                SetPiece(position, ChessColor.w, PieceType.Queen);
-                break;
-            case 'q':
-                SetPiece(position, ChessColor.b, PieceType.Queen);
-                break;
-            case 'K':
-                SetPiece(position, ChessColor.w, PieceType.King);
-                break;
-            case 'k':
-                SetPiece(position, ChessColor.b, PieceType.King);
-                break;
-            default:
-                throw new ArgumentException("Invalid piece character in FEN string.");
-        }
+            'P' or 'p' => PieceType.Pawn,
+            'N' or 'n' => PieceType.Knight,
+            'B' or 'b' => PieceType.Bishop,
+            'R' or 'r' => PieceType.Rook,
+            'Q' or 'q' => PieceType.Queen,
+            'K' or 'k' => PieceType.King,
+            _ => throw new ArgumentException($"Invalid piece character '{piece}' in FEN string.")
+        };
+
+        SetPiece(position, color, type);
     }
 
     public IEnumerable<Move> GetValidMoves(int positionIndex)
@@ -754,17 +734,14 @@ public struct ChessBitboard
         return false;
     }
 
-    internal bool IsInCheckMate(ChessColor player)
+    internal (bool isCheckmate, bool isStalemate, bool isCheck) CheckGameOver(ChessColor player)
     {
-        // If the king is not in check, it's not checkmate.
-        if (!IsKingInCheck(player))
-        {
-            return false;
-        }
+        bool inCheck = IsKingInCheck(player);
 
+        // Clone the board to avoid modifying the original state
         var originalState = Clone();
 
-        // Iterate over all pieces of the player and check if any move can escape check
+        // Iterate over all pieces of the player and check if any legal move exists
         foreach (PieceType pieceType in PIECE_TYPES)
         {
             ulong pieceBitboard = GetPieceBitboard(player, pieceType);
@@ -782,19 +759,17 @@ public struct ChessBitboard
                     ChessBitboard state = originalState.Clone();
                     state.MakeMove(move);
 
-                    // If the king is no longer in check, it's not checkmate
-                    bool stillInCheck = state.IsKingInCheck(player);
-
-                    if (!stillInCheck)
+                    // If any legal move exists, it's neither checkmate nor stalemate
+                    if (!state.IsKingInCheck(player))
                     {
-                        return false;
+                        return (false, false, inCheck);
                     }
                 }
             }
         }
 
-        // No legal move found that escapes check, it's checkmate
-        return true;
+        // If no legal moves exist, determine checkmate or stalemate
+        return inCheck ? (true, false, true) : (false, true, false);
     }
 
     private ChessBitboard Clone()

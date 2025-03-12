@@ -8,10 +8,16 @@ public class ChessGame : MonoBehaviour
     public Board Board;
     public Solver Solver;
 
+    public ChessColor ActivePlayer;
+
+    public bool AutoWhiteTurn;
+    public bool AutoBlackTurn;
+
     void Start()
     {
-        ResetGame();
+        //ResetGame();
         Board.PieceMoved += Board_PieceMoved;
+        Board.PieceCanceled += Board_PieceCanceled;
     }
 
     public void ResetGame()
@@ -19,6 +25,7 @@ public class ChessGame : MonoBehaviour
         //var boardData = "8/3p4/8/8/8/8/P7/RNBQKBNR w KQkq - 0 1";
         var boardData = FENParser.STANDARDGAMESETUP;
         var fenData = FENParser.ParseFEN(boardData, 8, 8);
+        ActivePlayer = fenData.ActiveColor;
         var boardRecord = fenData.Pieces.Select(x => new PieceRecord()
         {
             IsWhite = x.Player == ChessColor.w,
@@ -33,93 +40,135 @@ public class ChessGame : MonoBehaviour
     private void OnDestroy()
     {
         Board.PieceMoved -= Board_PieceMoved;
+        Board.PieceCanceled -= Board_PieceCanceled;
     }
 
-    private void Board_PieceMoved(Piece movedPiece, Cell OriginalCell, Piece capturedPiece, Cell newCell)
+    private void Board_PieceMoved(Piece movedPiece, Cell originalCell, Piece capturedPiece, Cell destinationCell)
     {
-        (bool blackInCheck, bool blackMate, bool whiteInCheck, bool whiteMate) = HandleCheck();
+        HandleSpecialMoves(movedPiece, originalCell, capturedPiece, destinationCell);
+
+        var otherColor = Solver.OtherColor(movedPiece.PieceColor);
+        (bool isCheckmate, bool isStalemate, bool isCheck) = HandleCheck(otherColor);
+
+        var chessUI = FindObjectOfType<ChessUI>();
+        if (isCheckmate)
+        {
+            chessUI.CurrentMessage = "Check Mate";
+        }
+        else if (isStalemate)
+        {
+            chessUI.CurrentMessage = "Stale Mate";
+        }
+        else if (isCheck)
+        {
+            chessUI.CurrentMessage = "Check";
+        }
+        else
+        {
+            chessUI.CurrentMessage = string.Empty;
+        }
 
         var algebraicNotation = GetAlgebraicNotation(
             movedPiece,
-            OriginalCell,
+            originalCell,
             capturedPiece,
-            newCell,
-            blackInCheck,
-            blackMate,
-            whiteInCheck,
-            whiteMate);
+            destinationCell,
+            isCheck,
+            isCheckmate);
 
         FindObjectOfType<ChessUI>().MoveList.Add(algebraicNotation);
-        FindObjectOfType<ChessUI>().UpdateUI();
+        ActivePlayer = Solver.OtherColor(movedPiece.PieceColor);
 
-        if (movedPiece.PieceColor == ChessColor.w &&
-            !blackMate)
+        chessUI.UpdateUI();
+        if (!isCheckmate && !isStalemate)
         {
-            DoBlackTurn();
+            if (ActivePlayer == ChessColor.b &&
+                AutoBlackTurn)
+            {
+                DoBlackTurn();
+            }
+            else if (ActivePlayer == ChessColor.w &&
+                AutoWhiteTurn)
+            {
+                DoWhiteTurn();
+            }
         }
     }
 
-    private (bool blackInCheck, bool blackMate, bool whiteInCheck, bool whiteMate) HandleCheck()
+    internal ChessColor GetActivePlayer()
+    {
+        return ActivePlayer;
+    }
+
+    private void HandleSpecialMoves(Piece movedPiece, Cell originalCell, Piece capturedPiece, Cell destinationCell)
+    {
+        if (movedPiece.PieceType == PieceType.Pawn && (destinationCell.Y == Board.Height - 1 || destinationCell.Y == 0))
+        {
+            PromotePawn(movedPiece, destinationCell);
+        }
+    }
+
+    private void PromotePawn(Piece pawn, Cell destinationCell)
+    {
+        PieceType promotionChoice = PieceType.Queen; // Default choice (can be changed by UI)
+
+        Board.ReplacePiece(destinationCell, promotionChoice, pawn);
+        Console.WriteLine($"Pawn promoted to {promotionChoice} at {destinationCell}");
+    }
+
+    private void Board_PieceCanceled(Piece movedPiece, Cell originalCell, string reason)
+    {
+        ChessUI chessUI = FindObjectOfType<ChessUI>();
+        chessUI.CurrentMessage = reason;
+        chessUI.UpdateUI();
+    }
+
+
+    private (bool isCheckmate, bool isStalemate, bool isCheck) HandleCheck(ChessColor chessColor)
     {
         var boardData = Solver.ToBoardData(Board);
         var fen = FENParser.BoardToFEN(boardData, boardData.GetLength(0), boardData.GetLength(1));
         ChessGameRecord game = new ChessGameRecord(fen, boardData.GetLength(0), boardData.GetLength(1));
 
-        var blackInCheck = game.ChessBitboard.IsKingInCheck(ChessColor.b);
-        var whiteInCheck = game.ChessBitboard.IsKingInCheck(ChessColor.w);
-        bool blackMate = false;
-        bool whiteMate = false;
-
-        if (blackInCheck)
-        {
-            Debug.Log("Black in Check");
-            if (game.ChessBitboard.IsInCheckMate(ChessColor.b))
-            {
-                blackMate = true;
-                Debug.Log("Black is Mated");
-            }
-        }
-
-        if (whiteInCheck)
-        {
-            Debug.Log("White in Check");
-            if (game.ChessBitboard.IsInCheckMate(ChessColor.w))
-            {
-                whiteMate = true;
-                Debug.Log("White is Mated");
-            }
-        }
-
-        return (blackInCheck, blackMate, whiteInCheck, whiteMate);
+        return game.ChessBitboard.CheckGameOver(chessColor);
     }
 
     public void DoBlackTurn()
     {
-        var move = Solver.GetNextMove(Board, ChessColor.b);
+        StartCoroutine(DoBlackTurnRoutine());
+    }
 
-        (int fromX, int fromY) from = FromIndex(move.From);
-        (int toX, int toY) to = FromIndex(move.To);
+    private IEnumerator DoBlackTurnRoutine()
+    {
+        var move = Solver.GetNextMove(Board, ChessColor.b);
+        yield return null;
+
+        (int fromX, int fromY) from = Board.FromIndex(move.From, Board.Width);
+        (int toX, int toY) to = Board.FromIndex(move.To, Board.Width);
         var oldPiece = Board.Cells[from.fromX, from.fromY].CurrentPiece;
+        yield return new WaitForSecondsRealtime(1f);
 
         Board.PieceDropped(oldPiece, Board.Cells[to.toX, to.toY]);
     }
 
-    //auto
     public void DoWhiteTurn()
     {
-        var move = Solver.GetNextMove(Board, ChessColor.w);
+        StartCoroutine(DoWhiteTurnRoutine());
+    }
 
-        (int fromX, int fromY) from = FromIndex(move.From);
-        (int toX, int toY) to = FromIndex(move.To);
+    private IEnumerator DoWhiteTurnRoutine()
+    {
+        var move = Solver.GetNextMove(Board, ChessColor.w);
+        yield return null;
+
+        (int fromX, int fromY) from = Board.FromIndex(move.From, Board.Width);
+        (int toX, int toY) to = Board.FromIndex(move.To, Board.Width);
         var oldPiece = Board.Cells[from.fromX, from.fromY].CurrentPiece;
 
+        yield return new WaitForSecondsRealtime(1f);
         Board.PieceDropped(oldPiece, Board.Cells[to.toX, to.toY]);
     }
 
-    public (int x, int y) FromIndex(int positionIndex)
-    {
-        return (positionIndex % 8, positionIndex / 8);
-    }
 
     public static PieceType ToPieceType(char piece)
     {
@@ -136,7 +185,14 @@ public class ChessGame : MonoBehaviour
         }
     }
 
-    public string GetAlgebraicNotation(Piece movedPiece, Cell originalCell, Piece capturedPiece, Cell newCell, bool blackInCheck, bool blackMate, bool whiteInCheck, bool whiteMate)
+    public string GetAlgebraicNotation(
+        Piece movedPiece,
+        Cell originalCell,
+        Piece capturedPiece,
+        Cell newCell,
+        bool isCheck,
+        bool isMate
+        )
     {
         // If the move involves a capture
         if (capturedPiece != null)
@@ -145,12 +201,14 @@ public class ChessGame : MonoBehaviour
             if (movedPiece.PieceType == PieceType.Pawn)
             {
                 // For pawn captures, include the file from where the pawn moved (e.g., e5).
-                return $"{ToFile(originalCell.X)}{GetCaptureSymbol()}{ToFile(newCell.X)}{ToRank(newCell.Y)}{GetCheckOrMate(blackInCheck, blackMate, whiteInCheck, whiteMate)}";
+                return $"{ToFile(originalCell.X)}{GetCaptureSymbol()}{ToFile(newCell.X)}{ToRank(newCell.Y)}{GetCheckOrMate(isCheck, isMate)}";
             }
             else
             {
                 // For other pieces (non-pawn), include the piece type and the capture.
-                return $"{FENParser.ToFEN(movedPiece.PieceType, movedPiece.PieceColor == ChessColor.w)}{ToFile(originalCell.X)}{ToRank(originalCell.Y)}{GetCaptureSymbol()}{ToFile(newCell.X)}{ToRank(newCell.Y)}{GetCheckOrMate(blackInCheck, blackMate, whiteInCheck, whiteMate)}";
+                return $"{FENParser.ToFEN(movedPiece.PieceType, movedPiece.PieceColor == ChessColor.w)}" +
+                    $"{ToFile(originalCell.X)}{ToRank(originalCell.Y)}{GetCaptureSymbol()}" +
+                    $"{ToFile(newCell.X)}{ToRank(newCell.Y)}{GetCheckOrMate(isCheck, isMate)}";
             }
         }
         else
@@ -159,12 +217,12 @@ public class ChessGame : MonoBehaviour
             if (movedPiece.PieceType == PieceType.Pawn)
             {
                 // For pawns, you can omit the piece type, as it's implied.
-                return $"{ToFile(newCell.X)}{ToRank(newCell.Y)}{GetCheckOrMate(blackInCheck, blackMate, whiteInCheck, whiteMate)}";
+                return $"{ToFile(newCell.X)}{ToRank(newCell.Y)}{GetCheckOrMate(isCheck, isMate)}";
             }
             else
             {
                 // For other pieces, include the piece type.
-                return $"{FENParser.ToFEN(movedPiece.PieceType, movedPiece.PieceColor == ChessColor.w)}{ToFile(newCell.X)}{ToRank(newCell.Y)}{GetCheckOrMate(blackInCheck, blackMate, whiteInCheck, whiteMate)}";
+                return $"{FENParser.ToFEN(movedPiece.PieceType, movedPiece.PieceColor == ChessColor.w)}{ToFile(newCell.X)}{ToRank(newCell.Y)}{GetCheckOrMate(isCheck, isMate)}";
             }
         }
     }
@@ -184,16 +242,13 @@ public class ChessGame : MonoBehaviour
     {
         return "x"; // Standard notation for a capture
     }
-    private string GetCheckOrMate(bool blackInCheck, bool blackMate, bool whiteInCheck, bool whiteMate)
+
+    private string GetCheckOrMate(bool check, bool mate)
     {
-        if (blackMate)
-            return "#"; // Black is in checkmate
-        if (whiteMate)
-            return "#"; // White is in checkmate
-        if (blackInCheck)
-            return "+"; // Black is in check
-        if (whiteInCheck)
-            return "+"; // White is in check
+        if (mate)
+            return "#";
+        if (check)
+            return "+";
 
         return ""; // No check or mate
     }

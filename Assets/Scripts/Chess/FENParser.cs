@@ -8,46 +8,60 @@ public class FENParser
 
     public static FENData ParseFEN(string fen, int rankMax, int fileMax)
     {
-        string[] parts = fen.Split(' ');
-        FENData fenData = new FENData
+        if (fen == null || fen.Length < 15) // Quick check for basic validity
+            throw new ArgumentException("FEN string is too short or null.");
+
+        ReadOnlySpan<char> parts = fen.AsSpan();
+        int spaceCount = 0;
+        Span<int> spaceIndices = stackalloc int[6];
+
+        for (int i = 0; i < parts.Length && spaceCount < 6; i++)
         {
-            Pieces = new List<FenRecord>(),
-        };
+            if (parts[i] == ' ') spaceIndices[spaceCount++] = i;
+        }
+        if (spaceCount < 5) throw new ArgumentException("Invalid FEN format: Missing required fields.");
 
-        string board = parts[0]; // The piece placement data
-        fenData.ActiveColor = parts[1] == "w" ? ChessColor.w : ChessColor.b;
-        fenData.CastlingRights = parts[2];
-        fenData.EnPassant = parts[3];
-        fenData.HalfMoveClock = parts[4];
-        fenData.FullMoveNumber = parts[5];
+        FENData fenData = new FENData { Pieces = new List<FenRecord>() };
+        ReadOnlySpan<char> board = parts.Slice(0, spaceIndices[0]);
+        ReadOnlySpan<char> activeColorSpan = parts.Slice(spaceIndices[0] + 1, 1);
+        ReadOnlySpan<char> castlingRights = parts.Slice(spaceIndices[1] + 1, spaceIndices[2] - spaceIndices[1] - 1);
+        ReadOnlySpan<char> enPassant = parts.Slice(spaceIndices[2] + 1, spaceIndices[3] - spaceIndices[2] - 1);
+        ReadOnlySpan<char> halfMoveClockSpan = parts.Slice(spaceIndices[3] + 1, spaceIndices[4] - spaceIndices[3] - 1);
+        ReadOnlySpan<char> fullMoveNumberSpan = parts.Slice(spaceIndices[4] + 1, spaceCount == 6 ? spaceIndices[5] - spaceIndices[4] - 1 : parts.Length - spaceIndices[4] - 1);
 
-        int y = fileMax - 1; //(FEN starts from the top row)
-        int x = 0;
+        fenData.ActiveColor = activeColorSpan[0] == 'w' ? ChessColor.w : ChessColor.b;
+        fenData.CastlingRights = castlingRights.ToString();
+        fenData.EnPassant = enPassant.ToString();
 
-        foreach (char c in board)
+        if (!int.TryParse(halfMoveClockSpan, out int halfMoveClock) || !int.TryParse(fullMoveNumberSpan, out int fullMoveNumber) || fullMoveNumber < 1)
+            throw new ArgumentException("Invalid half-move clock or full-move number.");
+
+        fenData.HalfMoveClock = halfMoveClock.ToString();
+        fenData.FullMoveNumber = fullMoveNumber.ToString();
+
+        int y = rankMax - 1, x = 0;
+        for (int i = 0; i < board.Length; i++)
         {
+            char c = board[i];
             if (c == '/')
             {
-                y--; // Move to next rank
-                x = 0; // Reset file position
+                if (x != fileMax) throw new ArgumentException("Invalid FEN: Incorrect number of squares in a rank.");
+                y--; x = 0;
             }
-            else if (char.IsDigit(c))
+            else if (c >= '1' && c <= '8')
             {
-                x += c - '0'; // Empty squares
+                x += c - '0';
+                if (x > fileMax) throw new ArgumentException("Invalid FEN: Too many squares in a rank.");
             }
-            else
+            else if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
             {
-                fenData.Pieces.Add(new FenRecord
-                {
-                    X = x,
-                    Y = y,
-                    Piece = char.ToUpper(c),
-                    Player = char.IsUpper(c) ? ChessColor.w : ChessColor.b
-                });
-                x++; // Move to next file
+                if (x >= fileMax || y < 0) throw new ArgumentException("Invalid FEN: Piece placement out of bounds.");
+                fenData.Pieces.Add(new FenRecord { X = x++, Y = y, Piece = char.ToUpper(c), Player = c < 'a' ? ChessColor.w : ChessColor.b });
             }
+            else throw new ArgumentException("Invalid FEN: Unexpected character in board setup.");
         }
 
+        if (y != 0 || x != fileMax) throw new ArgumentException("Invalid FEN: Board does not have the correct number of squares.");
         return fenData;
     }
 
@@ -61,38 +75,44 @@ public class FENParser
         string halfMoveClock = "0",
         string fullMoveNumber = "1")
     {
-        List<string> ranks = new List<string>();
+        StringBuilder fenBuilder = new StringBuilder(rowCount * (colCount + 1)); // Preallocate reasonable size
 
         for (int row = 0; row < rowCount; row++) // Rank 8 to Rank 1 (0-indexed)
         {
             int emptyCount = 0;
-            StringBuilder rankFEN = new StringBuilder();
 
             for (int col = 0; col < colCount; col++) // File 'a' to 'h'
             {
-                PieceRecord? pieceMovement = pieceRecords[col, rowCount - 1 - row];
-                if (pieceMovement.HasValue) // Piece exists
+                ref PieceRecord? pieceMovement = ref pieceRecords[col, rowCount - 1 - row]; // Avoid array bound checks
+                if (pieceMovement.HasValue)
                 {
                     if (emptyCount > 0)
                     {
-                        rankFEN.Append(emptyCount); // Append empty count if any
+                        fenBuilder.Append((char)('0' + emptyCount)); // Avoid .ToString() allocation
                         emptyCount = 0;
                     }
-                    rankFEN.Append(ToFEN(pieceMovement.Value.PieceType, pieceMovement.Value.IsWhite));
+                    fenBuilder.Append(ToFEN(pieceMovement.Value.PieceType, pieceMovement.Value.IsWhite));
                 }
                 else
                 {
                     emptyCount++;
                 }
             }
-            if (emptyCount > 0) rankFEN.Append(emptyCount); // Append trailing empty squares
+            if (emptyCount > 0)
+                fenBuilder.Append((char)('0' + emptyCount)); // Append trailing empty squares
 
-            ranks.Add(rankFEN.ToString());
+            if (row != rowCount - 1) // Avoid extra trailing slash
+                fenBuilder.Append('/');
         }
-        string piecePlacement = string.Join("/", ranks);
 
         // Combine all components
-        return $"{piecePlacement} {activeColor} {castlingRights} {enPassant} {halfMoveClock} {fullMoveNumber}";
+        fenBuilder.Append(' ').Append(activeColor)
+            .Append(' ').Append(castlingRights)
+            .Append(' ').Append(enPassant)
+            .Append(' ').Append(halfMoveClock)
+            .Append(' ').Append(fullMoveNumber);
+
+        return fenBuilder.ToString();
     }
 
     // Converts a PieceMovement to FEN character
