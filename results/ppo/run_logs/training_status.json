@@ -1,0 +1,29 @@
+{
+    "ChessBot": {
+        "checkpoints": [
+            {
+                "steps": 194864,
+                "file_path": "results\\ppo\\ChessBot\\ChessBot-194864.onnx",
+                "reward": null,
+                "creation_time": 1741782134.5741627,
+                "auxillary_file_paths": [
+                    "results\\ppo\\ChessBot\\ChessBot-194864.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 194864,
+            "file_path": "results\\ppo\\ChessBot.onnx",
+            "reward": null,
+            "creation_time": 1741782134.5741627,
+            "auxillary_file_paths": [
+                "results\\ppo\\ChessBot\\ChessBot-194864.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.2.2+cu121"
+    }
+}

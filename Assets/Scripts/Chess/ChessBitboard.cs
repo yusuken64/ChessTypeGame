@@ -412,12 +412,12 @@ public struct ChessBitboard
         ((WhitePawns | BlackPawns | WhiteKnights | BlackKnights | WhiteBishops | BlackBishops |
           WhiteRooks | BlackRooks | WhiteQueens | BlackQueens | WhiteKings | BlackKings) & (1UL << positionIndex)) == 0;
 
-    private bool IsEnemyPieceAt(int positionIndex, ChessColor color) =>
+    public bool IsEnemyPieceAt(int positionIndex, ChessColor color) =>
         ((color == ChessColor.w ?
           (BlackPawns | BlackKnights | BlackBishops | BlackRooks | BlackQueens | BlackKings) :
           (WhitePawns | WhiteKnights | WhiteBishops | WhiteRooks | WhiteQueens | WhiteKings)) & (1UL << positionIndex)) != 0;
 
-    private bool IsAlliedPieceAt(int positionIndex, ChessColor color) =>
+    public bool IsAlliedPieceAt(int positionIndex, ChessColor color) =>
         ((color == ChessColor.w ?
           (WhitePawns | WhiteKnights | WhiteBishops | WhiteRooks | WhiteQueens | WhiteKings) :
           (BlackPawns | BlackKnights | BlackBishops | BlackRooks | BlackQueens | BlackKings)) & (1UL << positionIndex)) != 0;

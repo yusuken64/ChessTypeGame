@@ -405,7 +405,10 @@ public class Board : MonoBehaviour
                 }
                 else
                 {
-                    originalCell.ResetPiece();
+                    if (originalCell.CurrentPiece != null)
+                    {
+                        originalCell.ResetPiece();
+                    }
                 }
             };
         }

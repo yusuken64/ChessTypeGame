@@ -13,15 +13,28 @@ public class ChessGame : MonoBehaviour
     public bool AutoWhiteTurn;
     public bool AutoBlackTurn;
 
+    public ChessAgent WhiteAgent;
+
+    public int HalfMoveClock;
+    public int FullMove;
+
+    private bool whiteMoving;
+
     void Start()
     {
-        //ResetGame();
+        Debug.Log("Start Chess Game Object");
         Board.PieceMoved += Board_PieceMoved;
         Board.PieceCanceled += Board_PieceCanceled;
     }
 
     public void ResetGame()
     {
+        Debug.Log("Reset Game");
+        StopAllCoroutines();
+        FullMove = 0;
+        HalfMoveClock = 0;
+        whiteMoving = false;
+
         //var boardData = "8/3p4/8/8/8/8/P7/RNBQKBNR w KQkq - 0 1";
         var boardData = FENParser.STANDARDGAMESETUP;
         var fenData = FENParser.ParseFEN(boardData, 8, 8);
@@ -35,6 +48,12 @@ public class ChessGame : MonoBehaviour
         });
 
         Board.SetState(boardRecord);
+
+        if (ActivePlayer == ChessColor.w &&
+            AutoWhiteTurn)
+        {
+            DoWhiteTurn();
+        }
     }
 
     private void OnDestroy()
@@ -76,7 +95,12 @@ public class ChessGame : MonoBehaviour
             isCheck,
             isCheckmate);
 
-        FindObjectOfType<ChessUI>().MoveList.Add(algebraicNotation);
+        FindObjectOfType<ChessUI>().MoveList.Add($"{FullMove} {HalfMoveClock} {algebraicNotation}");
+        if (movedPiece.PieceColor == ChessColor.b)
+        {
+            FullMove++;
+        }
+        HalfMoveClock++;
         ActivePlayer = Solver.OtherColor(movedPiece.PieceColor);
 
         chessUI.UpdateUI();
@@ -123,7 +147,6 @@ public class ChessGame : MonoBehaviour
         chessUI.UpdateUI();
     }
 
-
     private (bool isCheckmate, bool isStalemate, bool isCheck) HandleCheck(ChessColor chessColor)
     {
         var boardData = Solver.ToBoardData(Board);
@@ -135,6 +158,7 @@ public class ChessGame : MonoBehaviour
 
     public void DoBlackTurn()
     {
+        Debug.Log($"Black Turn {FullMove} {HalfMoveClock}");
         StartCoroutine(DoBlackTurnRoutine());
     }
 
@@ -153,12 +177,29 @@ public class ChessGame : MonoBehaviour
 
     public void DoWhiteTurn()
     {
-        StartCoroutine(DoWhiteTurnRoutine());
+        Debug.Log($"White Turn {FullMove} {HalfMoveClock}");
+        if (!whiteMoving)
+        {
+            whiteMoving = true;
+            StartCoroutine(DoWhiteTurnRoutine());
+        }
     }
 
     private IEnumerator DoWhiteTurnRoutine()
     {
-        var move = Solver.GetNextMove(Board, ChessColor.w);
+        Move move;
+        if (WhiteAgent != null)
+        {
+            while (!WhiteAgent.HasValidMove)
+            {
+                yield return null;
+            }
+            move = WhiteAgent.GetNextMove();
+        }
+        else
+        {
+            move = Solver.GetNextMove(Board, ChessColor.w);
+        }
         yield return null;
 
         (int fromX, int fromY) from = Board.FromIndex(move.From, Board.Width);
@@ -166,9 +207,10 @@ public class ChessGame : MonoBehaviour
         var oldPiece = Board.Cells[from.fromX, from.fromY].CurrentPiece;
 
         yield return new WaitForSecondsRealtime(1f);
+
+        whiteMoving = false;
         Board.PieceDropped(oldPiece, Board.Cells[to.toX, to.toY]);
     }
-
 
     public static PieceType ToPieceType(char piece)
     {
