@@ -149,11 +149,6 @@ public class Cell : MonoBehaviour
         CurrentPiece.SetColor(piece.PieceColor);
     }
 
-    internal void Capture(Piece piece)
-    {
-        SetPiece(piece, false);
-    }
-
     internal void SetPiece(Piece piece, bool immediate = true)
     {
         CurrentPiece = piece;

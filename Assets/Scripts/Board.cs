@@ -26,7 +26,7 @@ public class Board : MonoBehaviour
     public Piece KnightPrefab;
     public Piece PawnPrefab;
 
-    public delegate void PieceMovedDelegate(Piece movedPiece, Cell originalCell, Piece capturedPiece, Cell newCell);
+    public delegate void PieceMovedDelegate(Piece movedPiece, Cell originalCell, Piece capturedPiece, Cell destinationCell);
     public PieceMovedDelegate PieceMoved;
 
     public delegate void PieceCanceledDelegate(Piece movedPiece, Cell originalCell, string reason);
@@ -43,7 +43,7 @@ public class Board : MonoBehaviour
         if (Echo) { return true; }
 
         var originalCell = Cells.OfType<Cell>().First(x => x.CurrentPiece == piece);
-        PieceRecord?[,] boardData = Solver.ToBoardData(this);
+        PieceRecord?[,] boardData = MinimaxABSolver.ToBoardData(this);
         var originalRecord = boardData[originalCell.X, originalCell.Y];
         boardData[originalCell.X, originalCell.Y] = null;
         boardData[cell.X, cell.Y] = originalRecord;
@@ -318,7 +318,7 @@ public class Board : MonoBehaviour
     public IEnumerable<Cell> GetMovabableCells(Piece piece)
     {
         var originCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == piece);
-        PieceRecord?[,] boardData2 = Solver.ToBoardData(this);
+        PieceRecord?[,] boardData2 = SolverBase.ToBoardData(this);
         string fen = FENParser.BoardToFEN(boardData2, Cells.GetLength(0), Cells.GetLength(1));
         ChessGameRecord game = new ChessGameRecord(fen, Cells.GetLength(0), Cells.GetLength(1), CanQueenPromote);
         IEnumerable<Move> validMoves = game.GetCandidateMoves((originCell.X, originCell.Y));
@@ -337,54 +337,52 @@ public class Board : MonoBehaviour
         return y * boardSize + x;
     }
 
-    public void PieceDropped(Piece piece, Cell cell)
+    public void PieceDropped(Piece movedPiece, Cell destinationCell)
     {
-        if (cell != null)
+        if (destinationCell != null)
         {
-            var originalCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == piece);
-            var (x, y) = FindCellIndex(Cells, cell);
-            var newCell = Cells[x, y];
+            var originalCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == movedPiece);
+            var (x, y) = FindCellIndex(Cells, destinationCell);
             if (originalCell != null)
             {
-                IEnumerable<Cell> movableCells = GetMovabableCells(piece);
+                IEnumerable<Cell> movableCells = GetMovabableCells(movedPiece);
 
-                if (originalCell != newCell &&
-                    movableCells.Contains(newCell))
+                if (originalCell != destinationCell &&
+                    movableCells.Contains(destinationCell))
                 {
-                    var originalPiece = originalCell.CurrentPiece;
+                    var capturedPiece = originalCell.CurrentPiece;
                     originalCell.SetPiece(null);
 
                     if (Echo)
                     {
-                        if (newCell.CurrentPiece != null &&
-                            newCell.CurrentPiece.PieceColor != originalPiece.PieceColor)
+                        if (destinationCell.CurrentPiece != null &&
+                            destinationCell.CurrentPiece.PieceColor != capturedPiece.PieceColor)
                         {
                             //capture
-                            Destroy(originalPiece.gameObject);
-                            newCell.CaptureEcho(piece);
+                            Destroy(capturedPiece.gameObject);
+                            destinationCell.CaptureEcho(movedPiece);
 
-                            PieceMoved?.Invoke(originalPiece, originalCell, piece, newCell);
+                            PieceMoved?.Invoke(capturedPiece, originalCell, movedPiece, destinationCell);
                         }
                         else
                         {
-                            newCell.SetPiece(piece);
-                            PieceMoved?.Invoke(originalPiece, originalCell, null, newCell);
+                            destinationCell.SetPiece(movedPiece);
+                            PieceMoved?.Invoke(capturedPiece, originalCell, null, destinationCell);
                         }
                     }
                     else
                     {
-                        if (newCell.CurrentPiece != null &&
-                            newCell.CurrentPiece.PieceColor != originalPiece.PieceColor)
+                        if (destinationCell.CurrentPiece != null)
                         {
                             //capture
-                            Destroy(newCell.CurrentPiece.gameObject);
-                            newCell.Capture(piece);
-                            PieceMoved?.Invoke(originalPiece, originalCell, piece, newCell);
+                            Destroy(destinationCell.CurrentPiece.gameObject);
+                            destinationCell.SetPiece(movedPiece);
+                            PieceMoved?.Invoke(movedPiece, originalCell, capturedPiece, destinationCell);
                         }
                         else
                         {
-                            newCell.SetPiece(piece, false);
-                            PieceMoved?.Invoke(originalPiece, originalCell, null, newCell);
+                            destinationCell.SetPiece(movedPiece, false);
+                            PieceMoved?.Invoke(movedPiece, originalCell, capturedPiece, destinationCell);
                         }
                     }
                 }
@@ -399,7 +397,7 @@ public class Board : MonoBehaviour
         }
         else
         {
-            var originalCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == piece);
+            var originalCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == movedPiece);
             originalCell.ResetPiece();
         }
     }

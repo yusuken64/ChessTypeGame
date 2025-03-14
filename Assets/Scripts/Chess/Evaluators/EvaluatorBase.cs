@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [Serializable]
@@ -20,7 +21,7 @@ public class PieceValueEvaluator : EvaluatorBase
         {
             PieceType pieceType = ChessGame.ToPieceType(record.Piece);
 
-            int pieceValue = Solver.GetPieceValue(pieceType);
+            int pieceValue = MinimaxABSolver.GetPieceValue(pieceType);
             if (record.Player == currentPlayer)
             {
                 score += pieceValue;
@@ -55,8 +56,8 @@ public class PositionalValueEvaluator : EvaluatorBase
         int score = 0;
 
         // Mobility (more valid moves is usually good)
-        int playerMoves = Solver.GetLegalMoves(game, currentPlayer).Count;
-        int enemyMoves = Solver.GetLegalMoves(game, Solver.OtherColor(currentPlayer)).Count;
+        int playerMoves = SolverBase.GetLegalMoves(game, currentPlayer).Count();
+        int enemyMoves = SolverBase.GetLegalMoves(game, MinimaxABSolver.OtherColor(currentPlayer)).Count(); ;
         score += (int)((playerMoves - enemyMoves));
 
         return score;
@@ -71,12 +72,12 @@ public class AttackingValueEvaluator : EvaluatorBase
         int score = 0;
 
         // Mobility (more valid moves is usually good)
-        int playerMoves = Solver.GetLegalMoves(game, currentPlayer).Count;
-        int enemyMoves = Solver.GetLegalMoves(game, Solver.OtherColor(currentPlayer)).Count;
+        int playerMoves = MinimaxABSolver.GetLegalMoves(game, currentPlayer).Count();
+        int enemyMoves = MinimaxABSolver.GetLegalMoves(game, MinimaxABSolver.OtherColor(currentPlayer)).Count();
         score += (int)((playerMoves - enemyMoves));
 
         // Reward for attacking enemy pieces
-        foreach (var move in Solver.GetLegalMoves(game, currentPlayer))
+        foreach (var move in MinimaxABSolver.GetLegalMoves(game, currentPlayer))
         {
             if (game.IsCapture(move, currentPlayer))
             {

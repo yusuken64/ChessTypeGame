@@ -1126,65 +1126,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!1 &153131809
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 153131811}
-  - component: {fileID: 153131810}
-  m_Layer: 0
-  m_Name: Solver
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &153131810
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 153131809}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 244ba7a95963ee041ae5f8e59d31602d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  SolveDepth: 2
-  Evaluators:
-  - Evaluator:
-      rid: 8423563341652557829
-    Weight: 10.1
-  - Evaluator:
-      rid: 8423563341652557830
-    Weight: 5
-  references:
-    version: 2
-    RefIds:
-    - rid: 8423563341652557829
-      type: {class: PieceValueEvaluator, ns: , asm: Assembly-CSharp}
-    - rid: 8423563341652557830
-      type: {class: PositionalValueEvaluator, ns: , asm: Assembly-CSharp}
---- !u!4 &153131811
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 153131809}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 3
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &167233719
 GameObject:
   m_ObjectHideFlags: 0
@@ -4507,7 +4448,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -100, y: 85}
+  m_AnchoredPosition: {x: -100, y: 84}
   m_SizeDelta: {x: 154.64, y: 147.5424}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &554728203
@@ -5874,7 +5815,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 5
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &662208321
 GameObject:
@@ -11201,7 +11142,7 @@ RectTransform:
   - {fileID: 1629703435}
   - {fileID: 771789201}
   m_Father: {fileID: 0}
-  m_RootOrder: 4
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
@@ -11229,6 +11170,8 @@ MonoBehaviour:
   StateInput: {fileID: 2002486055}
   AutoWhiteToggle: {fileID: 1571011974}
   AutoBlackToggle: {fileID: 385711477}
+  AutoButton: {fileID: 1487504472}
+  AutoButtonText: {fileID: 1184101373}
 --- !u!1 &1129542933
 GameObject:
   m_ObjectHideFlags: 0
@@ -14610,14 +14553,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Board: {fileID: 559676263}
-  Solver: {fileID: 153131810}
   ActivePlayer: 0
   AutoWhiteTurn: 0
   AutoBlackTurn: 0
-  WhiteAgent: {fileID: 0}
-  BlackAgent: {fileID: 0}
   HalfMoveClock: 0
   FullMove: 0
+  MoveMax: 150
+  WhiteSolverDefinition: {fileID: 11400000, guid: 1713839ce7f2ccd4988758d8128174e0, type: 2}
+  BlackSolverDefinition: {fileID: 11400000, guid: c12956c89e0f2b545afb4e3a54648e69, type: 2}
+  Thinking: 0
 --- !u!4 &1471562459
 Transform:
   m_ObjectHideFlags: 0
@@ -17306,7 +17250,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 118.5, y: 86.5}
+  m_AnchoredPosition: {x: 118.5, y: 86}
   m_SizeDelta: {x: 154.64, y: 110.18}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1629703436

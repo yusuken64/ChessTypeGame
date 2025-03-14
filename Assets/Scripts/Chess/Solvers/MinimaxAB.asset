@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f373f7daff611af47bac9876e7e8f52d, type: 3}
+  m_Name: MinimaxAB
+  m_EditorClassIdentifier: 
+  SolveDepth: 2
+  Evaluators:
+  - Evaluator:
+      rid: 8423563417555042304
+    Weight: 9.9
+  - Evaluator:
+      rid: 8423563417555042306
+    Weight: 1.3
+  - Evaluator:
+      rid: 8423563417555042307
+    Weight: 2.6
+  references:
+    version: 2
+    RefIds:
+    - rid: 8423563417555042304
+      type: {class: PieceValueEvaluator, ns: , asm: Assembly-CSharp}
+    - rid: 8423563417555042306
+      type: {class: AttackingValueEvaluator, ns: , asm: Assembly-CSharp}
+    - rid: 8423563417555042307
+      type: {class: PositionalValueEvaluator, ns: , asm: Assembly-CSharp}

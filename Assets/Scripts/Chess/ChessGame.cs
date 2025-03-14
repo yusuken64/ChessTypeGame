@@ -1,23 +1,29 @@
 using System;
 using System.Collections;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class ChessGame : MonoBehaviour
 {
     public Board Board;
-    public Solver Solver;
 
     public ChessColor ActivePlayer;
 
     public bool AutoWhiteTurn;
     public bool AutoBlackTurn;
 
-    public ChessAgent WhiteAgent;
-    public ChessAgent BlackAgent;
-
     public int HalfMoveClock;
     public int FullMove;
+    public int MoveMax;
+
+    public SolverDefinitionBase WhiteSolverDefinition;
+    public SolverDefinitionBase BlackSolverDefinition;
+
+    private SolverBase _whiteSolver;
+    private SolverBase _blackSolver;
+
+    public bool Thinking = false; //is a solver is busy
 
     void Start()
     {
@@ -32,6 +38,7 @@ public class ChessGame : MonoBehaviour
         StopAllCoroutines();
         FullMove = 0;
         HalfMoveClock = 0;
+        Thinking = false;
 
         //var boardData = "8/3p4/8/8/8/8/P7/RNBQKBNR w KQkq - 0 1";
         var boardData = FENParser.STANDARDGAMESETUP;
@@ -46,6 +53,9 @@ public class ChessGame : MonoBehaviour
         });
 
         Board.SetState(boardRecord);
+
+        _whiteSolver = WhiteSolverDefinition?.GetSolver();
+        _blackSolver = BlackSolverDefinition?.GetSolver();
 
         if (ActivePlayer == ChessColor.w &&
             AutoWhiteTurn)
@@ -62,13 +72,10 @@ public class ChessGame : MonoBehaviour
 
     private void Board_PieceMoved(Piece movedPiece, Cell originalCell, Piece capturedPiece, Cell destinationCell)
     {
-        if (WhiteAgent != null) WhiteAgent.HasValidMove = false;
-        if (BlackAgent != null) BlackAgent.HasValidMove = false;
-
         HandleSpecialMoves(movedPiece, originalCell, capturedPiece, destinationCell);
 
-        var otherColor = Solver.OtherColor(movedPiece.PieceColor);
-        (bool isCheckmate, bool isStalemate, bool isCheck) = HandleCheck(otherColor);
+        var otherColor = SolverBase.OtherColor(movedPiece.PieceColor);
+        (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) = HandleCheck(otherColor);
 
         var chessUI = FindObjectOfType<ChessUI>();
         if (isCheckmate)
@@ -82,6 +89,10 @@ public class ChessGame : MonoBehaviour
         else if (isCheck)
         {
             chessUI.CurrentMessage = "Check";
+        } 
+        else if (isDraw)
+        {
+            chessUI.CurrentMessage = "Draw";
         }
         else
         {
@@ -102,10 +113,16 @@ public class ChessGame : MonoBehaviour
             FullMove++;
         }
         HalfMoveClock++;
-        ActivePlayer = Solver.OtherColor(movedPiece.PieceColor);
+        ActivePlayer = SolverBase.OtherColor(movedPiece.PieceColor);
+
+        bool moveLimit = FullMove >= MoveMax;
+        if (moveLimit)
+        {
+            chessUI.CurrentMessage = "Move Limit";
+        }
 
         chessUI.UpdateUI();
-        if (!isCheckmate && !isStalemate)
+        if (!isCheckmate && !isStalemate && !isDraw && !moveLimit)
         {
             if (ActivePlayer == ChessColor.b &&
                 AutoBlackTurn)
@@ -137,10 +154,8 @@ public class ChessGame : MonoBehaviour
 
     private void PromotePawn(Piece pawn, Cell destinationCell)
     {
-        PieceType promotionChoice = PieceType.Queen; // Default choice (can be changed by UI)
-
+        PieceType promotionChoice = PieceType.Queen;
         Board.ReplacePiece(destinationCell, promotionChoice, pawn);
-        Console.WriteLine($"Pawn promoted to {promotionChoice} at {destinationCell}");
     }
 
     private void Board_PieceCanceled(Piece movedPiece, Cell originalCell, string reason)
@@ -150,9 +165,9 @@ public class ChessGame : MonoBehaviour
         chessUI.UpdateUI();
     }
 
-    private (bool isCheckmate, bool isStalemate, bool isCheck) HandleCheck(ChessColor chessColor)
+    private (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) HandleCheck(ChessColor chessColor)
     {
-        var boardData = Solver.ToBoardData(Board);
+        var boardData = SolverBase.ToBoardData(Board);
         var fen = FENParser.BoardToFEN(boardData, boardData.GetLength(0), boardData.GetLength(1));
         ChessGameRecord game = new ChessGameRecord(fen, boardData.GetLength(0), boardData.GetLength(1), Board.CanQueenPromote);
 
@@ -172,34 +187,54 @@ public class ChessGame : MonoBehaviour
     private IEnumerator DoAutoTurnRoutine(ChessColor color)
     {
         yield return null;
-        Move move;
-        var agent = GetAgentFor(color);
-        if (agent != null)
-        {
-            while (!agent.HasValidMove)
-            {
-                yield return null;
-            }
-            move = agent.GetNextMove();
-        }
-        else
-        {
-            move = Solver.GetNextMove(Board, color);
-        }
-        yield return null;
 
+        PieceRecord?[,] boardData = SolverBase.ToBoardData(Board);
+        var fen = FENParser.BoardToFEN(boardData, Board.Cells.GetLength(0), Board.Cells.GetLength(1), color.ToString());
+        ChessGameRecord game = new ChessGameRecord(fen, Board.Cells.GetLength(0), Board.Cells.GetLength(1), Board.CanQueenPromote);
+
+        var solver = GetSolverFor(color);
+        if (solver == null)
+        {
+            throw new Exception($"Solver not defined for {color}");
+        }
+
+        var legalMoves = SolverBase.GetLegalMoves(game, color);
+        Thinking = true;
+        FindObjectOfType<ChessUI>().UpdateUI();
+
+#if UNITY_WEBGL
+        // For WebGL, simulate async work without Task.Run() (as WebGL doesn't support multi-threading)
+        yield return new WaitForSeconds(1f);  // Simulate delay as async work
+        var move = solver.GetNextMove(game, color, legalMoves);
+#else
+    // For other platforms, you can use Task.Run() or threading logic
+    var task = Task.Run(() =>
+    {
+        return solver.GetNextMove(game, color, legalMoves);
+    });
+
+    // Wait until the task completes
+    while (!task.IsCompleted)
+    {
+        yield return null;
+    }
+
+    var move = task.Result; // Safely get the result once the task is done
+#endif
+
+        Thinking = false;
+
+        // Using your existing logic for processing the move
         (int fromX, int fromY) from = Board.FromIndex(move.From, Board.Width);
         (int toX, int toY) to = Board.FromIndex(move.To, Board.Width);
         var oldPiece = Board.Cells[from.fromX, from.fromY].CurrentPiece;
 
-        yield return new WaitForSecondsRealtime(1f);
-
         Board.PieceDropped(oldPiece, Board.Cells[to.toX, to.toY]);
     }
-
-    private ChessAgent GetAgentFor(ChessColor color)
+    
+    private SolverBase GetSolverFor(ChessColor color)
     {
-        return color == ChessColor.w ? WhiteAgent : BlackAgent;
+        return color == ChessColor.w ? _whiteSolver : _blackSolver;
     }
 
     public static PieceType ToPieceType(char piece)

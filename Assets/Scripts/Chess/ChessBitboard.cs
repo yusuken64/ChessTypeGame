@@ -770,7 +770,7 @@ public struct ChessBitboard
         return false;
     }
 
-    internal (bool isCheckmate, bool isStalemate, bool isCheck) CheckGameOver(ChessColor player)
+    internal (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) CheckGameOver(ChessColor player)
     {
         bool inCheck = IsKingInCheck(player);
 
@@ -795,17 +795,51 @@ public struct ChessBitboard
                     ChessBitboard state = originalState.Clone();
                     state.MakeMove(move);
 
-                    // If any legal move exists, it's neither checkmate nor stalemate
+                    // If any legal move exists, it's neither checkmate, stalemate, nor draw
                     if (!state.IsKingInCheck(player))
                     {
-                        return (false, false, inCheck);
+                        return (false, false, inCheck, false);
                     }
                 }
             }
         }
 
         // If no legal moves exist, determine checkmate or stalemate
-        return inCheck ? (true, false, true) : (false, true, false);
+        if (inCheck)
+            return (true, false, true, false);
+
+        // Check for draw conditions
+        if (IsInsufficientMaterial()
+            //|| IsThreefoldRepetition()
+            //|| IsFiftyMoveRule()
+            )
+            return (false, false, false, true);
+
+        return (false, true, false, false);
+    }
+
+    private bool IsInsufficientMaterial()
+    {
+        //TODO add other cases
+        var whiteCount = BitboardPopulationCount(GetAlliedMask(ChessColor.w));
+        var blackCount = BitboardPopulationCount(GetAlliedMask(ChessColor.b));
+
+        return whiteCount + blackCount <= 2;
+    }
+
+    ulong GetAlliedMask(ChessColor color) => color == ChessColor.b ?
+        (BlackPawns | BlackKnights | BlackBishops | BlackRooks | BlackQueens | BlackKings) :
+          (WhitePawns | WhiteKnights | WhiteBishops | WhiteRooks | WhiteQueens | WhiteKings);
+
+    private int BitboardPopulationCount(ulong bitboard)
+    {
+        int count = 0;
+        while (bitboard != 0)
+        {
+            bitboard &= bitboard - 1; // Removes the least significant bit set to 1
+            count++;
+        }
+        return count;
     }
 
     public ChessBitboard Clone()

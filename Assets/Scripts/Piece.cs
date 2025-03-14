@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System.Linq;
 using UnityEngine;
 
@@ -45,6 +46,11 @@ public class Piece : MonoBehaviour
 
             board.Cells.Cast<Cell>().ToList().ForEach(x => x.ClearDroppable());
         };
+    }
+
+    private void OnDestroy()
+    {
+        this.transform.DOKill(false);
     }
 
     internal void SetColor(ChessColor pieceColor)

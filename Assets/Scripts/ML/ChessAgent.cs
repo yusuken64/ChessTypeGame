@@ -10,7 +10,7 @@ public class ChessAgent : Agent
 {
     public ChessColor ChessColor;
     public ChessGame ChessGame;
-    public Solver Solver;
+    public MinimaxABSolver Solver;
 
     public int TurnMax;
 
@@ -43,7 +43,7 @@ public class ChessAgent : Agent
         if (ChessGame.ActivePlayer == ChessColor)
         {
             _thinking = true;
-            var boardData = Solver.ToBoardData(ChessGame.Board);
+            var boardData = MinimaxABSolver.ToBoardData(ChessGame.Board);
             string fen = FENParser.BoardToFEN(boardData, ChessGame.Board.Width, ChessGame.Board.Height);
             ChessGameRecord game = new ChessGameRecord(fen, ChessGame.Board.Width, ChessGame.Board.Height, ChessGame.Board.CanQueenPromote);
             var position = Board.FromIndex(from, ChessGame.Board.Width);
@@ -60,15 +60,15 @@ public class ChessAgent : Agent
                 var fromPos = Board.FromIndex(currentValidMove.From, ChessGame.Board.Width);
                 var toPos = Board.FromIndex(currentValidMove.To, ChessGame.Board.Width);
 
-                var enemyColor = Solver.OtherColor(ChessColor);
-                (bool isCheckmate, bool isStalemate, bool isCheck) gameOverPlayer = Solver.CheckGameOver(game, ChessColor);
-                (bool isCheckmate, bool isStalemate, bool isCheck) gameOverEnemy = Solver.CheckGameOver(game, enemyColor);
+                var enemyColor = MinimaxABSolver.OtherColor(ChessColor);
+                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverPlayer = MinimaxABSolver.CheckGameOver(game, ChessColor);
+                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverEnemy = MinimaxABSolver.CheckGameOver(game, enemyColor);
                 int score = Solver.EvaluateBoard(game, ChessColor, gameOverPlayer, gameOverEnemy);
 
                 game.MakeMove(currentValidMove);
 
-                (bool isCheckmate, bool isStalemate, bool isCheck) gameOverPlayer2 = Solver.CheckGameOver(game, ChessColor);
-                (bool isCheckmate, bool isStalemate, bool isCheck) gameOverEnemy2 = Solver.CheckGameOver(game, enemyColor);
+                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverPlayer2 = MinimaxABSolver.CheckGameOver(game, ChessColor);
+                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverEnemy2 = MinimaxABSolver.CheckGameOver(game, enemyColor);
 
                 if (gameOverPlayer2.isCheckmate || gameOverPlayer2.isCheck)
                 {
@@ -105,7 +105,7 @@ public class ChessAgent : Agent
 
     public override void CollectObservations(VectorSensor sensor)
     {
-        var boardData = Solver.ToBoardData(ChessGame.Board);
+        var boardData = MinimaxABSolver.ToBoardData(ChessGame.Board);
         string fen = FENParser.BoardToFEN(boardData, ChessGame.Board.Width, ChessGame.Board.Height);
         ChessGameRecord game = new ChessGameRecord(fen, ChessGame.Board.Width, ChessGame.Board.Height, ChessGame.Board.CanQueenPromote);
         

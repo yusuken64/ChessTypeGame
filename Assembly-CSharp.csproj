@@ -63,24 +63,28 @@
     <Compile Include="Assets\Scripts\ML\ChessAgent.cs" />
     <Compile Include="Assets\Scripts\Chess\FenRecord.cs" />
     <Compile Include="Assets\Scripts\Chess\UI\ChessUI.cs" />
+    <Compile Include="Assets\Scripts\Chess\Solvers\SolverBase.cs" />
     <Compile Include="Assets\Scripts\Chess\FENData.cs" />
     <Compile Include="Assets\Scripts\GameGenerator.cs" />
     <Compile Include="Assets\Scripts\Game.cs" />
     <Compile Include="Assets\Scripts\History\HistoryItem.cs" />
+    <Compile Include="Assets\Scripts\Chess\Solvers\RandomSolverDefinition.cs" />
     <Compile Include="Assets\Scripts\Chess\WeightedEvaluator.cs" />
     <Compile Include="Assets\Scripts\UI.cs" />
     <Compile Include="Assets\Scripts\Chess\Move.cs" />
     <Compile Include="Assets\Scripts\Board.cs" />
     <Compile Include="Assets\Scripts\Instructions.cs" />
     <Compile Include="Assets\Scripts\Chess\ChessGameRecord.cs" />
-    <Compile Include="Assets\Scripts\Chess\Solver.cs" />
+    <Compile Include="Assets\Scripts\Chess\Solvers\SolverDefinitionBase.cs" />
     <Compile Include="Assets\Scripts\History\HistoryPanel.cs" />
     <Compile Include="Assets\Scripts\Draggable.cs" />
+    <Compile Include="Assets\Scripts\Chess\Solvers\MinimaxABSolverDefinition.cs" />
     <Compile Include="Assets\Scripts\AudioManager.cs" />
     <Compile Include="Assets\Scripts\Chess\Evaluators\EvaluatorBase.cs" />
     <Compile Include="Assets\Scripts\Cell.cs" />
     <Compile Include="Assets\Scripts\Chess\ChessBitboard.cs" />
     <Compile Include="Assets\Scripts\Chess\ChessGame.cs" />
+    <Compile Include="Assets\Scripts\Chess\Solvers\MinimaxABSolver.cs" />
     <Compile Include="Assets\Scripts\Piece.cs" />
   </ItemGroup>
   <ItemGroup>

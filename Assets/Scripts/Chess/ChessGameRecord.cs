@@ -40,7 +40,7 @@ public struct ChessGameRecord
 
     internal static bool IsMoveLegal(Move move, ChessBitboard boardCopy)
     {
-        var kingColor = boardCopy.IsAlliedPieceAt(move.To, ChessColor.w) ? ChessColor.w : ChessColor.b;
+        var kingColor = boardCopy.IsAlliedPieceAt(move.From, ChessColor.w) ? ChessColor.w : ChessColor.b;
 
         // Apply the move to the copied board
         boardCopy.MakeMove(move);
@@ -55,7 +55,7 @@ public struct ChessGameRecord
         return ChessBitboard.IsKingInCheck(whoseTurn);
     }
 
-    internal (bool isCheckmate, bool isStalemate, bool isCheck) CheckGameOver(ChessColor player)
+    internal (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) CheckGameOver(ChessColor player)
     {
         return ChessBitboard.CheckGameOver(player);
     }

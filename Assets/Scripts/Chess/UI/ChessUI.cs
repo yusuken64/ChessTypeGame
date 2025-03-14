@@ -21,6 +21,9 @@ public class ChessUI : MonoBehaviour
     public Toggle AutoWhiteToggle;
     public Toggle AutoBlackToggle;
 
+    public Button AutoButton;
+    public TextMeshProUGUI AutoButtonText;
+
     private void Start()
     {
         CurrentMessage = string.Empty;
@@ -62,12 +65,16 @@ public class ChessUI : MonoBehaviour
         {
             TurnText.text = "Black Turn";
         }
+
+        var thinking = FindObjectOfType<ChessGame>().Thinking;
+        AutoButton.enabled = !thinking;
+        AutoButtonText.text = thinking ? "Thinking..." : "Auto";
     }
 
     public void GetState_Clicked()
     {
         var board = ChessGame.Board;
-        PieceRecord?[,] boardData = Solver.ToBoardData(board);
+        PieceRecord?[,] boardData = MinimaxABSolver.ToBoardData(board);
         var fen = FENParser.BoardToFEN(boardData, board.Cells.GetLength(0), board.Cells.GetLength(1), ChessGame.ActivePlayer.ToString());
 
         string result = fen.Replace(@"/", @"/" + "\n");
