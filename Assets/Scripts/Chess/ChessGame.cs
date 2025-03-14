@@ -127,7 +127,9 @@ public class ChessGame : MonoBehaviour
 
     private void HandleSpecialMoves(Piece movedPiece, Cell originalCell, Piece capturedPiece, Cell destinationCell)
     {
-        if (movedPiece.PieceType == PieceType.Pawn && (destinationCell.Y == Board.Height - 1 || destinationCell.Y == 0))
+        if (Board.CanQueenPromote &&
+            movedPiece.PieceType == PieceType.Pawn &&
+            (destinationCell.Y == Board.Height - 1 || destinationCell.Y == 0))
         {
             PromotePawn(movedPiece, destinationCell);
         }
@@ -152,7 +154,7 @@ public class ChessGame : MonoBehaviour
     {
         var boardData = Solver.ToBoardData(Board);
         var fen = FENParser.BoardToFEN(boardData, boardData.GetLength(0), boardData.GetLength(1));
-        ChessGameRecord game = new ChessGameRecord(fen, boardData.GetLength(0), boardData.GetLength(1));
+        ChessGameRecord game = new ChessGameRecord(fen, boardData.GetLength(0), boardData.GetLength(1), Board.CanQueenPromote);
 
         return game.ChessBitboard.CheckGameOver(chessColor);
     }

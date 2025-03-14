@@ -4579,6 +4579,7 @@ MonoBehaviour:
   RookPrefab: {fileID: 5012544779128870848, guid: a77f3c8bc54f2af409841a25bb10ac2d, type: 3}
   KnightPrefab: {fileID: 5012544779128870848, guid: fd42e91861918b74d9b54a1d7dd5b6ac, type: 3}
   PawnPrefab: {fileID: 5012544779128870848, guid: c47777ad851d4d7418e6a7c0cdb6663e, type: 3}
+  CanQueenPromote: 1
 --- !u!4 &559676264
 Transform:
   m_ObjectHideFlags: 0

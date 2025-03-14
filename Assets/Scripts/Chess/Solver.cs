@@ -17,7 +17,8 @@ public class Solver : MonoBehaviour
             board.Cells.GetLength(0),
             board.Cells.GetLength(1),
             SolveDepth,
-            chessColor);
+            chessColor,
+            board.CanQueenPromote);
 
         //(int fromX, int fromY) from = FromIndex(nextMove.From);
         //(int toX, int toY) to = FromIndex(nextMove.To);
@@ -45,18 +46,18 @@ public class Solver : MonoBehaviour
         return boardData;
     }
 
-    public Move GetBestMove(string fen, int rankMax, int fileMax, int maxDepth, ChessColor currentPlayer)
+    public Move GetBestMove(string fen, int rankMax, int fileMax, int maxDepth, ChessColor currentPlayer, bool canPawnPromote)
     {
         bool moveFound = false;
-        ChessGameRecord game = new ChessGameRecord(fen, rankMax, fileMax);
+        ChessGameRecord game = new ChessGameRecord(fen, rankMax, fileMax, canPawnPromote);
         Move bestMove = default;
         int bestScore = int.MinValue; // Start maximizing
 
-        List<Move> possibleMoves = GetValidMoves(game, currentPlayer);
+        List<Move> possibleMoves = GetLegalMoves(game, currentPlayer);
 
         foreach (var move in possibleMoves.OrderBy(x => Guid.NewGuid()))
         {
-            ChessGameRecord newGame = new ChessGameRecord(game.fen, rankMax, fileMax);
+            ChessGameRecord newGame = new ChessGameRecord(game.fen, rankMax, fileMax, canPawnPromote);
             newGame.MakeMove(move);
 
             if (newGame.IsInCheck(currentPlayer)) { continue; } // Skip illegal moves
@@ -81,7 +82,12 @@ public class Solver : MonoBehaviour
         return bestMove;
     }
 
-    private int Minimax(ChessGameRecord game, int depth, bool isMaximizing, int rankMax, int fileMax, ChessColor currentPlayer)
+    private int Minimax(ChessGameRecord game,
+        int depth,
+        bool isMaximizing,
+        int rankMax,
+        int fileMax,
+        ChessColor currentPlayer)
     {
         ChessColor enemyColor = currentPlayer == ChessColor.w ? ChessColor.b : ChessColor.w;
 
@@ -93,14 +99,14 @@ public class Solver : MonoBehaviour
             return EvaluateBoard(game, currentPlayer, gameOverPlayer, gameOverEnemy);
         }
 
-        List<Move> possibleMoves = GetValidMoves(game, isMaximizing ? currentPlayer : enemyColor);
+        List<Move> possibleMoves = GetLegalMoves(game, isMaximizing ? currentPlayer : enemyColor);
 
         if (isMaximizing)
         {
             int bestScore = int.MinValue;
             foreach (var move in possibleMoves)
             {
-                ChessGameRecord newGame = new ChessGameRecord(game.fen, rankMax, fileMax);
+                ChessGameRecord newGame = new ChessGameRecord(game.fen, rankMax, fileMax, game.canPawnPromote);
                 newGame.MakeMove(move);
 
                 if (newGame.IsInCheck(currentPlayer)) { continue; }
@@ -115,7 +121,7 @@ public class Solver : MonoBehaviour
             int bestScore = int.MaxValue;
             foreach (var move in possibleMoves)
             {
-                ChessGameRecord newGame = new ChessGameRecord(game.fen, rankMax, fileMax);
+                ChessGameRecord newGame = new ChessGameRecord(game.fen, rankMax, fileMax, game.canPawnPromote);
                 newGame.MakeMove(move);
 
                 if (newGame.IsInCheck(enemyColor)) { continue; }
@@ -188,20 +194,12 @@ public class Solver : MonoBehaviour
         };
     }
 
-    public static List<Move> GetValidMoves(ChessGameRecord game, ChessColor player)
+    public static List<Move> GetLegalMoves(ChessGameRecord game, ChessColor player)
     {
-        List<Move> moves = new List<Move>();
-
-        foreach (FenRecord piece in game.FenData.Pieces
-            .Where(x => x.Player == player))
-        {
-            foreach (var move in game.GetCandidateMoves((piece.X, piece.Y)))
-            {
-                moves.Add(move);
-            }
-        }
-
-        return moves;
+        return game.FenData.Pieces
+            .Where(x => x.Player == player)
+            .SelectMany(piece => game.GetLegalMoves((piece.X, piece.Y)))
+            .ToList();
     }
 
     public static (bool isCheckmate, bool isStalemate, bool isCheck) CheckGameOver(ChessGameRecord game, ChessColor player)

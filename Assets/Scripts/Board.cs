@@ -33,6 +33,7 @@ public class Board : MonoBehaviour
     public PieceCanceledDelegate PieceCanceled;
 
     public Solution Solution { get; private set; }
+    public bool CanQueenPromote;
 
     //check if it causes check
     internal bool CanDrop(Piece piece, Cell cell, out string reason)
@@ -48,7 +49,7 @@ public class Board : MonoBehaviour
         boardData[cell.X, cell.Y] = originalRecord;
 
         string fen = FENParser.BoardToFEN(boardData, boardData.GetLength(0), boardData.GetLength(1));
-        ChessGameRecord game = new ChessGameRecord(fen, boardData.GetLength(0), boardData.GetLength(1));
+        ChessGameRecord game = new ChessGameRecord(fen, boardData.GetLength(0), boardData.GetLength(1), CanQueenPromote);
         var isInCheck = game.IsInCheck(piece.PieceColor);
 
         if (isInCheck)
@@ -319,7 +320,7 @@ public class Board : MonoBehaviour
         var originCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == piece);
         PieceRecord?[,] boardData2 = Solver.ToBoardData(this);
         string fen = FENParser.BoardToFEN(boardData2, Cells.GetLength(0), Cells.GetLength(1));
-        ChessGameRecord game = new ChessGameRecord(fen, Cells.GetLength(0), Cells.GetLength(1));
+        ChessGameRecord game = new ChessGameRecord(fen, Cells.GetLength(0), Cells.GetLength(1), CanQueenPromote);
         IEnumerable<Move> validMoves = game.GetCandidateMoves((originCell.X, originCell.Y));
         var movableCells = validMoves.Select(x => FromIndex(x.To, Cells.GetLength(0)))
             .Select(x => Cells[x.x, x.y]);

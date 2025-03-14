@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.MLAgents;
@@ -46,7 +45,7 @@ public class ChessAgent : Agent
             _thinking = true;
             var boardData = Solver.ToBoardData(ChessGame.Board);
             string fen = FENParser.BoardToFEN(boardData, ChessGame.Board.Width, ChessGame.Board.Height);
-            ChessGameRecord game = new ChessGameRecord(fen, ChessGame.Board.Width, ChessGame.Board.Height);
+            ChessGameRecord game = new ChessGameRecord(fen, ChessGame.Board.Width, ChessGame.Board.Height, ChessGame.Board.CanQueenPromote);
             var position = Board.FromIndex(from, ChessGame.Board.Width);
             IEnumerable<Move> validMoves = game.GetCandidateMoves((position.x, position.y));
             IEnumerable<Move> validMoves2 = validMoves.Where(x =>
@@ -108,7 +107,7 @@ public class ChessAgent : Agent
     {
         var boardData = Solver.ToBoardData(ChessGame.Board);
         string fen = FENParser.BoardToFEN(boardData, ChessGame.Board.Width, ChessGame.Board.Height);
-        ChessGameRecord game = new ChessGameRecord(fen, ChessGame.Board.Width, ChessGame.Board.Height);
+        ChessGameRecord game = new ChessGameRecord(fen, ChessGame.Board.Width, ChessGame.Board.Height, ChessGame.Board.CanQueenPromote);
         
         sensor.AddObservation(ChessColor == ChessColor.w ? 0 : 1);
         sensor.AddObservation(game.rankMax);

@@ -21,12 +21,14 @@ public struct ChessBitboard
 
     private int _rankMax;
     private int _fileMax;
+    private bool _promote;
 
     //rankMax and fileMax should be between 1 and 8
-    public ChessBitboard(string fen, int rankMax, int fileMax)
+    public ChessBitboard(string fen, int rankMax, int fileMax, bool promote)
     {
         _rankMax = rankMax;
         _fileMax = fileMax;
+        _promote = promote;
 
         // Initialize all the bitboards to empty
         WhitePawns = BlackPawns = WhiteKnights = BlackKnights = 0;
@@ -707,6 +709,23 @@ public struct ChessBitboard
                 WhiteRooks &= ~(1UL << endPosition);
                 WhiteQueens &= ~(1UL << endPosition);
                 WhiteKings &= ~(1UL << endPosition);
+            }
+        }
+
+        if (_promote && pieceType == PieceType.Pawn)
+        {
+            int lastRankStart = _rankMax * (_rankMax - 1); // First position of the last rank
+            int lastRankEnd = _rankMax * _rankMax - 1; // Last position of the last rank
+            int firstRankStart = 0;
+            int firstRankEnd = _rankMax - 1;
+
+            if (pieceColor == ChessColor.w && (endPosition >= lastRankStart && endPosition <= lastRankEnd))
+            {
+                pieceType = PieceType.Queen; // Promote White Pawn to Queen
+            }
+            else if (pieceColor == ChessColor.b && (endPosition >= firstRankStart && endPosition <= firstRankEnd))
+            {
+                pieceType = PieceType.Queen; // Promote Black Pawn to Queen
             }
         }
 

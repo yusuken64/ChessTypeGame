@@ -4,13 +4,14 @@ using System.Linq;
 
 public struct ChessGameRecord
 {
-    public ChessGameRecord(string fen, int rankMax, int fileMax)
+    public ChessGameRecord(string fen, int rankMax, int fileMax, bool promote)
     {
         this.fen = fen;
         this.rankMax = rankMax;
         this.fileMax = fileMax;
+        this.canPawnPromote = promote;
         FenData = FENParser.ParseFEN(fen, rankMax, fileMax);
-        ChessBitboard = new ChessBitboard(fen, rankMax, fileMax);
+        ChessBitboard = new ChessBitboard(fen, rankMax, fileMax, promote);
     }
 
     public string fen;
@@ -19,6 +20,7 @@ public struct ChessGameRecord
 
     public readonly int rankMax;
     public readonly int fileMax;
+    public readonly bool canPawnPromote;
 
     internal IEnumerable<Move> GetCandidateMoves((int x, int y) position)
     {
@@ -30,7 +32,6 @@ public struct ChessGameRecord
     {
         int positionIndex = position.y * fileMax + position.x;
         var candidateMoves = ChessBitboard.GetCandidateMoves(positionIndex);
-
 
         // Create a copy of the board state
         var boardCopy = ChessBitboard.Clone();

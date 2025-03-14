@@ -154,7 +154,7 @@ public class GameGenerator : MonoBehaviour
     private IEnumerable<Move> GetPlacableMoves(PieceRecord?[,] board, PieceRecord value)
     {
         string fen = FENParser.BoardToFEN(board, board.GetLength(0), board.GetLength(1));
-        ChessGameRecord game = new ChessGameRecord(fen, board.GetLength(0), board.GetLength(1));
+        ChessGameRecord game = new ChessGameRecord(fen, board.GetLength(0), board.GetLength(1), false);
         var positionIndex = Board.ToIndex(value.X, value.Y, board.GetLength(0));
         //IEnumerable<Move> candidateMoves = 
         //    game.ChessBitboard.GetPlacableMoves(value.PieceType, positionIndex, value.IsWhite ? ChessColor.w : ChessColor.b);

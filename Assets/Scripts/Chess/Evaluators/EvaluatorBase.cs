@@ -55,8 +55,8 @@ public class PositionalValueEvaluator : EvaluatorBase
         int score = 0;
 
         // Mobility (more valid moves is usually good)
-        int playerMoves = Solver.GetValidMoves(game, currentPlayer).Count;
-        int enemyMoves = Solver.GetValidMoves(game, Solver.OtherColor(currentPlayer)).Count;
+        int playerMoves = Solver.GetLegalMoves(game, currentPlayer).Count;
+        int enemyMoves = Solver.GetLegalMoves(game, Solver.OtherColor(currentPlayer)).Count;
         score += (int)((playerMoves - enemyMoves));
 
         return score;
@@ -71,12 +71,12 @@ public class AttackingValueEvaluator : EvaluatorBase
         int score = 0;
 
         // Mobility (more valid moves is usually good)
-        int playerMoves = Solver.GetValidMoves(game, currentPlayer).Count;
-        int enemyMoves = Solver.GetValidMoves(game, Solver.OtherColor(currentPlayer)).Count;
+        int playerMoves = Solver.GetLegalMoves(game, currentPlayer).Count;
+        int enemyMoves = Solver.GetLegalMoves(game, Solver.OtherColor(currentPlayer)).Count;
         score += (int)((playerMoves - enemyMoves));
 
         // Reward for attacking enemy pieces
-        foreach (var move in Solver.GetValidMoves(game, currentPlayer))
+        foreach (var move in Solver.GetLegalMoves(game, currentPlayer))
         {
             if (game.IsCapture(move, currentPlayer))
             {
