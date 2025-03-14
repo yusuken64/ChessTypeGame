@@ -314,34 +314,13 @@ public class Board : MonoBehaviour
         }
     }
 
-    internal static IEnumerable<Move> GetMovableSquares(PieceRecord?[,] board, ChessColor player)
-    {
-        string fen = FENParser.BoardToFEN(board, board.GetLength(0), board.GetLength(1));
-        ChessGameRecord game = new ChessGameRecord(fen, board.GetLength(0), board.GetLength(1));
-        return Solver.GetValidMoves(game, player);
-    }
-
-    internal static IEnumerable<Move> GetMovableSquaresForPiece(PieceRecord?[,] board, PieceRecord? lastPiece, ChessColor w)
-    {
-        string fen = FENParser.BoardToFEN(board, board.GetLength(0), board.GetLength(1));
-        ChessGameRecord game = new ChessGameRecord(fen, board.GetLength(0), board.GetLength(1));
-        return game.GetValidMoves(lastPiece.Value.PieceType, (lastPiece.Value.X, lastPiece.Value.Y));
-    }
-
-    internal static IEnumerable<Move> GetPlacableSquaresForPiece(PieceRecord?[,] board, PieceRecord? lastPiece)
-    {
-        string fen = FENParser.BoardToFEN(board, board.GetLength(0), board.GetLength(1));
-        ChessGameRecord game = new ChessGameRecord(fen, board.GetLength(0), board.GetLength(1));
-        return game.GetPlacableSquares(lastPiece.Value.PieceType, (lastPiece.Value.X, lastPiece.Value.Y));
-    }
-
     public IEnumerable<Cell> GetMovabableCells(Piece piece)
     {
         var originCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == piece);
         PieceRecord?[,] boardData2 = Solver.ToBoardData(this);
         string fen = FENParser.BoardToFEN(boardData2, Cells.GetLength(0), Cells.GetLength(1));
         ChessGameRecord game = new ChessGameRecord(fen, Cells.GetLength(0), Cells.GetLength(1));
-        IEnumerable<Move> validMoves = game.GetValidMoves((originCell.X, originCell.Y));
+        IEnumerable<Move> validMoves = game.GetCandidateMoves((originCell.X, originCell.Y));
         var movableCells = validMoves.Select(x => FromIndex(x.To, Cells.GetLength(0)))
             .Select(x => Cells[x.x, x.y]);
         return movableCells;
@@ -350,6 +329,11 @@ public class Board : MonoBehaviour
     public static (int x, int y) FromIndex(int positionIndex, int boardSize)
     {
         return (positionIndex % boardSize, positionIndex / boardSize);
+    }
+
+    public static int ToIndex(int x, int y, int boardSize)
+    {
+        return y * boardSize + x;
     }
 
     public void PieceDropped(Piece piece, Cell cell)

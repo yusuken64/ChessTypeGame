@@ -75,7 +75,7 @@ public class GameGenerator : MonoBehaviour
         var count = board.OfType<PieceRecord>().Count();
         if (count == 0) { return new List<(int x, int y)> { (startingPiece.X, startingPiece.Y) }; }
 
-        var movableSquares = Board.GetMovableSquaresForPiece(board, startingPiece, ChessColor.w);
+        var movableSquares = GetPlacableMoves(board, startingPiece);
 
         foreach (var movableSquare in movableSquares)
         {
@@ -96,6 +96,7 @@ public class GameGenerator : MonoBehaviour
                 board[nextPiece.X, nextPiece.Y] = nextPiece;
             }
         }
+
         return null;
     }
 
@@ -123,7 +124,7 @@ public class GameGenerator : MonoBehaviour
             nextPiece = pieceBag.First();
             pieceBag.Remove(nextPiece);
 
-            var placableSquares = Board.GetPlacableSquaresForPiece(board, lastPiece);
+            var placableSquares = GetPlacableMoves(board, lastPiece.Value);
 
             var randomPlacableSquares = placableSquares.OrderBy(x => Guid.NewGuid()).ToList();
             foreach (var cell in randomPlacableSquares)
@@ -150,19 +151,19 @@ public class GameGenerator : MonoBehaviour
         return false;
     }
 
-    // Method to find a valid cell where nextPiece can capture the last piece
-    private static Cell FindCaptureCell(Cell lastCell, Cell[,] cells)
+    private IEnumerable<Move> GetPlacableMoves(PieceRecord?[,] board, PieceRecord value)
     {
-        //var originCell = cells.FirstOrDefault(cell => cell.CurrentPiece == piece);
-        //PieceRecord?[,] boardData2 = Solver.ToBoardData(this);
-        //var movableSquares = Board.GetMovableSquares(cells, Player.w);
-        //var movableSquares = lastCell.CurrentPiece.GetMovableSquares(cells, lastCell, PieceColor.White, true);
-        //if (movableSquares.Count > 0)
-        //{
-        //    return movableSquares.OrderBy(x => Guid.NewGuid()).First();
-        //}
+        string fen = FENParser.BoardToFEN(board, board.GetLength(0), board.GetLength(1));
+        ChessGameRecord game = new ChessGameRecord(fen, board.GetLength(0), board.GetLength(1));
+        var positionIndex = Board.ToIndex(value.X, value.Y, board.GetLength(0));
+        //IEnumerable<Move> candidateMoves = 
+        //    game.ChessBitboard.GetPlacableMoves(value.PieceType, positionIndex, value.IsWhite ? ChessColor.w : ChessColor.b);
 
-        return null;
+        //in echo always assume white current piece is white
+        IEnumerable<Move> candidateMoves =
+    game.ChessBitboard.GetPlacableMoves(value.PieceType, positionIndex, ChessColor.w);
+
+        return candidateMoves;
     }
 
     [ContextMenu("StartGame_1")]

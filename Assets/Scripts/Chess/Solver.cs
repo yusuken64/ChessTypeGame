@@ -127,7 +127,7 @@ public class Solver : MonoBehaviour
         }
     }
 
-    private int EvaluateBoard(
+    public int EvaluateBoard(
         ChessGameRecord game,
         ChessColor currentPlayer,
         (bool isCheckmate, bool isStalemate, bool isCheck) gameOverPlayer,
@@ -195,7 +195,7 @@ public class Solver : MonoBehaviour
         foreach (FenRecord piece in game.FenData.Pieces
             .Where(x => x.Player == player))
         {
-            foreach (var move in game.GetValidMoves((piece.X, piece.Y)))
+            foreach (var move in game.GetCandidateMoves((piece.X, piece.Y)))
             {
                 moves.Add(move);
             }
@@ -204,7 +204,7 @@ public class Solver : MonoBehaviour
         return moves;
     }
 
-    private static (bool isCheckmate, bool isStalemate, bool isCheck) CheckGameOver(ChessGameRecord game, ChessColor player)
+    public static (bool isCheckmate, bool isStalemate, bool isCheck) CheckGameOver(ChessGameRecord game, ChessColor player)
     {
         return game.CheckGameOver(player);
     }

@@ -24,12 +24,12 @@ public class PieceValueEvaluator : EvaluatorBase
             if (record.Player == currentPlayer)
             {
                 score += pieceValue;
-                score += GetPositionalBonus(pieceType, record.X, record.Y, game.rankMax, game.fileMax);
+                //score += GetPositionalBonus(pieceType, record.X, record.Y, game.rankMax, game.fileMax);
             }
             else
             {
                 score -= pieceValue;
-                score -= GetPositionalBonus(pieceType, record.X, record.Y, game.rankMax, game.fileMax);
+                //score -= GetPositionalBonus(pieceType, record.X, record.Y, game.rankMax, game.fileMax);
             }
         }
         return score;
@@ -60,5 +60,47 @@ public class PositionalValueEvaluator : EvaluatorBase
         score += (int)((playerMoves - enemyMoves));
 
         return score;
+    }
+}
+
+[Serializable]
+public class AttackingValueEvaluator : EvaluatorBase
+{
+    public override int Score(ChessGameRecord game, ChessColor currentPlayer)
+    {
+        int score = 0;
+
+        // Mobility (more valid moves is usually good)
+        int playerMoves = Solver.GetValidMoves(game, currentPlayer).Count;
+        int enemyMoves = Solver.GetValidMoves(game, Solver.OtherColor(currentPlayer)).Count;
+        score += (int)((playerMoves - enemyMoves));
+
+        // Reward for attacking enemy pieces
+        foreach (var move in Solver.GetValidMoves(game, currentPlayer))
+        {
+            if (game.IsCapture(move, currentPlayer))
+            {
+                var capturedPiece = game.GetPieceAt(move.To, currentPlayer);
+                if (capturedPiece.HasValue)
+                {
+                    score += GetPieceValue(capturedPiece.Value); // Reward based on piece value
+                }
+            }
+        }
+
+        return score;
+    }
+
+    private int GetPieceValue(PieceType piece)
+    {
+        return piece switch
+        {
+            PieceType.Pawn => 1,
+            PieceType.Knight => 3,
+            PieceType.Bishop => 3,
+            PieceType.Rook => 5,
+            PieceType.Queen => 9,
+            _ => 0,
+        };
     }
 }

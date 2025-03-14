@@ -85,7 +85,7 @@ public struct ChessBitboard
         SetPiece(position, color, type);
     }
 
-    public IEnumerable<Move> GetValidMoves(int positionIndex)
+    public IEnumerable<Move> GetCandidateMoves(int positionIndex)
     {
         List<Move> validMoves = new List<Move>();
 
@@ -161,47 +161,39 @@ public struct ChessBitboard
         }
     }
 
-    public IEnumerable<Move> GetValidMoves(PieceType pieceType, int positionIndex)
+    //used for echo chess
+    public IEnumerable<Move> GetPlacableMoves(PieceType pieceType, int positionIndex, ChessColor color)
     {
+        List<Move> placableMoves = new List<Move>();
+
         switch (pieceType)
         {
             case PieceType.King:
-                return GetKingMoves(positionIndex, ChessColor.w);
+                placableMoves.AddRange(GetKingMoves(positionIndex, color));
+                break;
             case PieceType.Queen:
-                return GetQueenMoves(positionIndex, ChessColor.w);
+                placableMoves.AddRange(GetQueenMoves(positionIndex, color));
+                break;
             case PieceType.Bishop:
-                return GetBishopMoves(positionIndex, ChessColor.w);
+                placableMoves.AddRange(GetBishopMoves(positionIndex, color));
+                break;
             case PieceType.Rook:
-                return GetRookMoves(positionIndex, ChessColor.w);
+                placableMoves.AddRange(GetRookMoves(positionIndex, color));
+                break;
             case PieceType.Knight:
-                return GetKnightMoves(positionIndex, ChessColor.w);
+                placableMoves.AddRange(GetKnightMoves(positionIndex, color));
+                break;
             case PieceType.Pawn:
-                return GetPawnMoves(positionIndex, ChessColor.w);
-        }
+                placableMoves.AddRange(GetPlacablePawnMoves(positionIndex, color));
+                break;
+            default:
+                break;
+        };
 
-        return new List<Move>();
-    }
-
-    public IEnumerable<Move> GetPlacableSquares(PieceType pieceType, int positionIndex)
-    {
-        switch (pieceType)
+        foreach (var move in placableMoves)
         {
-            case PieceType.King:
-                return GetKingMoves(positionIndex, ChessColor.w);
-            case PieceType.Queen:
-                return GetQueenMoves(positionIndex, ChessColor.w);
-            case PieceType.Bishop:
-                return GetBishopMoves(positionIndex, ChessColor.w);
-            case PieceType.Rook:
-                return GetRookMoves(positionIndex, ChessColor.w);
-            case PieceType.Knight:
-                return GetKnightMoves(positionIndex, ChessColor.w);
-            case PieceType.Pawn:
-                //return GetPawnMoves(positionIndex, ChessColor.w);
-                return GetPlacablePawnMoves(positionIndex, ChessColor.w);
+            yield return move;
         }
-
-        return new List<Move>();
     }
 
     // Get possible pawn moves (can move one square forward or capture diagonally)
@@ -462,6 +454,31 @@ public struct ChessBitboard
         }
     }
 
+    public PieceType? GetPieceAt(int position, ChessColor color)
+    {
+        ulong mask = 1UL << position;
+        if (color == ChessColor.w)
+        {
+            if ((WhitePawns & mask) != 0) return PieceType.Pawn;
+            if ((WhiteKnights & mask) != 0) return PieceType.Knight;
+            if ((WhiteBishops & mask) != 0) return PieceType.Bishop;
+            if ((WhiteRooks & mask) != 0) return PieceType.Rook;
+            if ((WhiteQueens & mask) != 0) return PieceType.Queen;
+            if ((WhiteKings & mask) != 0) return PieceType.King;
+            return null; // No piece at this position
+        }
+        else
+        {
+            if ((BlackPawns & mask) != 0) return PieceType.Pawn;
+            if ((BlackKnights & mask) != 0) return PieceType.Knight;
+            if ((BlackBishops & mask) != 0) return PieceType.Bishop;
+            if ((BlackRooks & mask) != 0) return PieceType.Rook;
+            if ((BlackQueens & mask) != 0) return PieceType.Queen;
+            if ((BlackKings & mask) != 0) return PieceType.King;
+            return null; // No piece at this position
+        }
+    }
+
     private void SetBlackPiece(ulong mask, PieceType type)
     {
         switch (type)
@@ -718,7 +735,7 @@ public struct ChessBitboard
                 pieceBitboard &= pieceBitboard - 1; // Remove the least significant bit
 
                 // Get all valid moves for this piece
-                IEnumerable<Move> moves = GetValidMoves(piecePosition);
+                IEnumerable<Move> moves = GetCandidateMoves(piecePosition);
 
                 // If any move can capture the king, return true (king is in check)
                 foreach (Move move in moves)
@@ -752,7 +769,7 @@ public struct ChessBitboard
                 pieceBitboard &= pieceBitboard - 1; // Remove the least significant bit
 
                 // Get all valid moves for this piece
-                IEnumerable<Move> moves = GetValidMoves(piecePosition);
+                IEnumerable<Move> moves = GetCandidateMoves(piecePosition);
 
                 foreach (Move move in moves)
                 {
@@ -772,7 +789,7 @@ public struct ChessBitboard
         return inCheck ? (true, false, true) : (false, true, false);
     }
 
-    private ChessBitboard Clone()
+    public ChessBitboard Clone()
     {
         return new ChessBitboard()
         {

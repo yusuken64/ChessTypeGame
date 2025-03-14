@@ -19,7 +19,11 @@ public class AudioManager : MonoBehaviour
 
     private void Awake()
     {
-        Instance = this;
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(this.gameObject);
+        }
     }
 
     internal void PlayMusic(AudioClip musicClip, bool loop = true)

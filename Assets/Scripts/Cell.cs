@@ -178,7 +178,7 @@ public class Cell : MonoBehaviour
 
     internal void ResetPiece()
     {
-        AudioManager.Instance?.PlaySFX(AudioManager.Instance.Error);
+        AudioManager.Instance?.PlaySFX(AudioManager.Instance?.Error);
         SnapToCell(true);
     }
 

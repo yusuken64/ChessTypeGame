@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 public struct ChessGameRecord
 {
@@ -18,23 +20,34 @@ public struct ChessGameRecord
     public readonly int rankMax;
     public readonly int fileMax;
 
-    internal IEnumerable<Move> GetValidMoves((int x, int y) position)
+    internal IEnumerable<Move> GetCandidateMoves((int x, int y) position)
     {
         int positionIndex = position.y * fileMax + position.x;
-        return ChessBitboard.GetValidMoves(positionIndex);
+        return ChessBitboard.GetCandidateMoves(positionIndex);
     }
 
-    internal IEnumerable<Move> GetValidMoves(PieceType pieceType, (int x, int y) position)
+    internal IEnumerable<Move> GetLegalMoves((int x, int y) position)
     {
         int positionIndex = position.y * fileMax + position.x;
-        return ChessBitboard.GetValidMoves(pieceType, positionIndex);
+        var candidateMoves = ChessBitboard.GetCandidateMoves(positionIndex);
+
+
+        // Create a copy of the board state
+        var boardCopy = ChessBitboard.Clone();
+        return candidateMoves.Where(move => IsMoveLegal(move, boardCopy));
     }
 
-    internal IEnumerable<Move> GetPlacableSquares(PieceType pieceType, (int x, int y) position)
+    internal static bool IsMoveLegal(Move move, ChessBitboard boardCopy)
     {
-        int positionIndex = position.y * fileMax + position.x;
-        return ChessBitboard.GetPlacableSquares(pieceType, positionIndex);
+        var kingColor = boardCopy.IsAlliedPieceAt(move.To, ChessColor.w) ? ChessColor.w : ChessColor.b;
+
+        // Apply the move to the copied board
+        boardCopy.MakeMove(move);
+
+        // Determine if the current player's king is in check after the move
+        return !boardCopy.IsKingInCheck(kingColor);
     }
+
 
     internal bool IsInCheck(ChessColor whoseTurn)
     {
@@ -49,5 +62,15 @@ public struct ChessGameRecord
     internal void MakeMove(Move move)
     {
         ChessBitboard.MakeMove(move);
+    }
+
+    internal bool IsCapture(Move move, ChessColor currentPlayer)
+    {
+        return ChessBitboard.IsEnemyPieceAt(move.To, currentPlayer);
+    }
+
+    internal PieceType? GetPieceAt(int position, ChessColor currentPlayer)
+    {
+        return ChessBitboard.GetPieceAt(position, currentPlayer);
     }
 }

@@ -2,22 +2,22 @@
     "ChessBot": {
         "checkpoints": [
             {
-                "steps": 194864,
-                "file_path": "results\\ppo\\ChessBot\\ChessBot-194864.onnx",
-                "reward": null,
-                "creation_time": 1741782134.5741627,
+                "steps": 67935,
+                "file_path": "results\\ppo\\ChessBot\\ChessBot-67935.onnx",
+                "reward": -77.0,
+                "creation_time": 1741828696.5871673,
                 "auxillary_file_paths": [
-                    "results\\ppo\\ChessBot\\ChessBot-194864.pt"
+                    "results\\ppo\\ChessBot\\ChessBot-67935.pt"
                 ]
             }
         ],
         "final_checkpoint": {
-            "steps": 194864,
+            "steps": 67935,
             "file_path": "results\\ppo\\ChessBot.onnx",
-            "reward": null,
-            "creation_time": 1741782134.5741627,
+            "reward": -77.0,
+            "creation_time": 1741828696.5871673,
             "auxillary_file_paths": [
-                "results\\ppo\\ChessBot\\ChessBot-194864.pt"
+                "results\\ppo\\ChessBot\\ChessBot-67935.pt"
             ]
         }
     },

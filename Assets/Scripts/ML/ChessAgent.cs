@@ -11,9 +11,13 @@ public class ChessAgent : Agent
 {
     public ChessColor ChessColor;
     public ChessGame ChessGame;
+    public Solver Solver;
+
+    public int TurnMax;
 
     public override void OnEpisodeBegin()
     {
+        _thinking = false;
         if (ChessColor == ChessColor.w)
         {
             ChessGame.ResetGame();
@@ -26,22 +30,29 @@ public class ChessAgent : Agent
 
     public bool HasValidMove = false;
 
+    public float ValidMoveReward;
+    public float InvalidMoveReward;
+
+    private bool _thinking;
     public override void OnActionReceived(ActionBuffers actions)
     {
+        if (ChessGame.FullMove >= TurnMax) { EndEpisode(); return; }
+        if (HasValidMove || _thinking) { return; }
         from = actions.DiscreteActions[0];
         to = actions.DiscreteActions[1];
 
         if (ChessGame.ActivePlayer == ChessColor)
         {
+            _thinking = true;
             var boardData = Solver.ToBoardData(ChessGame.Board);
             string fen = FENParser.BoardToFEN(boardData, ChessGame.Board.Width, ChessGame.Board.Height);
             ChessGameRecord game = new ChessGameRecord(fen, ChessGame.Board.Width, ChessGame.Board.Height);
             var position = Board.FromIndex(from, ChessGame.Board.Width);
-            IEnumerable<Move> validMoves = game.GetValidMoves((position.x, position.y));
-            IEnumerable<Move> validMoves2 = validMoves.Where(x => 
-            game.ChessBitboard.IsAlliedPieceAt(from, ChessColor) &&
-            x.From == from &&
-            x.To == to
+            IEnumerable<Move> validMoves = game.GetCandidateMoves((position.x, position.y));
+            IEnumerable<Move> validMoves2 = validMoves.Where(x =>
+                game.ChessBitboard.IsAlliedPieceAt(from, ChessColor) &&
+                x.From == from &&
+                x.To == to
             );
             if (validMoves2.Any())
             {
@@ -49,14 +60,41 @@ public class ChessAgent : Agent
                 currentValidMove = validMoves2.First();
                 var fromPos = Board.FromIndex(currentValidMove.From, ChessGame.Board.Width);
                 var toPos = Board.FromIndex(currentValidMove.To, ChessGame.Board.Width);
-                //Debug.Log($"valid move found ({fromPos.x},{fromPos.y}) to ({toPos.x},{toPos.y})");
-                SetReward(1f);
+
+                var enemyColor = Solver.OtherColor(ChessColor);
+                (bool isCheckmate, bool isStalemate, bool isCheck) gameOverPlayer = Solver.CheckGameOver(game, ChessColor);
+                (bool isCheckmate, bool isStalemate, bool isCheck) gameOverEnemy = Solver.CheckGameOver(game, enemyColor);
+                int score = Solver.EvaluateBoard(game, ChessColor, gameOverPlayer, gameOverEnemy);
+
+                game.MakeMove(currentValidMove);
+
+                (bool isCheckmate, bool isStalemate, bool isCheck) gameOverPlayer2 = Solver.CheckGameOver(game, ChessColor);
+                (bool isCheckmate, bool isStalemate, bool isCheck) gameOverEnemy2 = Solver.CheckGameOver(game, enemyColor);
+
+                if (gameOverPlayer2.isCheckmate || gameOverPlayer2.isCheck)
+                {
+                    AddReward(InvalidMoveReward);
+                    _thinking = false;
+                    return;
+                }
+
+                int score2 = Solver.EvaluateBoard(game, ChessColor, gameOverPlayer2, gameOverEnemy2);
+
+                var delta = score2 - score + ValidMoveReward;
+                Debug.Log($"{ChessColor}:{delta}");
+                AddReward(delta);
+
+                if (gameOverPlayer2.isCheckmate || gameOverPlayer2.isStalemate ||
+                    gameOverEnemy2.isCheckmate || gameOverEnemy2.isStalemate)
+                {
+                    EndEpisode();
+                }
             }
             else
             {
-                SetReward(-1f);
-                //Debug.Log("Invalid move");
+                AddReward(InvalidMoveReward);
             }
+            _thinking = false;
         }
     }
 
@@ -66,18 +104,12 @@ public class ChessAgent : Agent
         return currentValidMove;
     }
 
-    public override void Heuristic(in ActionBuffers actionsOut)
-    {
-        //base.Heuristic(actionsOut);
-    }
-
     public override void CollectObservations(VectorSensor sensor)
     {
         var boardData = Solver.ToBoardData(ChessGame.Board);
         string fen = FENParser.BoardToFEN(boardData, ChessGame.Board.Width, ChessGame.Board.Height);
         ChessGameRecord game = new ChessGameRecord(fen, ChessGame.Board.Width, ChessGame.Board.Height);
         
-        //3 observations
         sensor.AddObservation(ChessColor == ChessColor.w ? 0 : 1);
         sensor.AddObservation(game.rankMax);
         sensor.AddObservation(game.fileMax);
@@ -99,7 +131,6 @@ public class ChessAgent : Agent
         };
 
         List<float> bitBoardsAsInts = PackUlongsToFloats(bitBoards);
-        //12 * 2 observations
         sensor.AddObservation(bitBoardsAsInts);
 
         base.CollectObservations(sensor);

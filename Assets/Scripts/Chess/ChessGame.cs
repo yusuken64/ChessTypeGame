@@ -14,11 +14,10 @@ public class ChessGame : MonoBehaviour
     public bool AutoBlackTurn;
 
     public ChessAgent WhiteAgent;
+    public ChessAgent BlackAgent;
 
     public int HalfMoveClock;
     public int FullMove;
-
-    private bool whiteMoving;
 
     void Start()
     {
@@ -33,7 +32,6 @@ public class ChessGame : MonoBehaviour
         StopAllCoroutines();
         FullMove = 0;
         HalfMoveClock = 0;
-        whiteMoving = false;
 
         //var boardData = "8/3p4/8/8/8/8/P7/RNBQKBNR w KQkq - 0 1";
         var boardData = FENParser.STANDARDGAMESETUP;
@@ -64,6 +62,9 @@ public class ChessGame : MonoBehaviour
 
     private void Board_PieceMoved(Piece movedPiece, Cell originalCell, Piece capturedPiece, Cell destinationCell)
     {
+        if (WhiteAgent != null) WhiteAgent.HasValidMove = false;
+        if (BlackAgent != null) BlackAgent.HasValidMove = false;
+
         HandleSpecialMoves(movedPiece, originalCell, capturedPiece, destinationCell);
 
         var otherColor = Solver.OtherColor(movedPiece.PieceColor);
@@ -158,47 +159,30 @@ public class ChessGame : MonoBehaviour
 
     public void DoBlackTurn()
     {
-        Debug.Log($"Black Turn {FullMove} {HalfMoveClock}");
-        StartCoroutine(DoBlackTurnRoutine());
-    }
-
-    private IEnumerator DoBlackTurnRoutine()
-    {
-        var move = Solver.GetNextMove(Board, ChessColor.b);
-        yield return null;
-
-        (int fromX, int fromY) from = Board.FromIndex(move.From, Board.Width);
-        (int toX, int toY) to = Board.FromIndex(move.To, Board.Width);
-        var oldPiece = Board.Cells[from.fromX, from.fromY].CurrentPiece;
-        yield return new WaitForSecondsRealtime(1f);
-
-        Board.PieceDropped(oldPiece, Board.Cells[to.toX, to.toY]);
+        StartCoroutine(DoAutoTurnRoutine(ChessColor.b));
     }
 
     public void DoWhiteTurn()
     {
-        Debug.Log($"White Turn {FullMove} {HalfMoveClock}");
-        if (!whiteMoving)
-        {
-            whiteMoving = true;
-            StartCoroutine(DoWhiteTurnRoutine());
-        }
+        StartCoroutine(DoAutoTurnRoutine(ChessColor.w));
     }
 
-    private IEnumerator DoWhiteTurnRoutine()
+    private IEnumerator DoAutoTurnRoutine(ChessColor color)
     {
+        yield return null;
         Move move;
-        if (WhiteAgent != null)
+        var agent = GetAgentFor(color);
+        if (agent != null)
         {
-            while (!WhiteAgent.HasValidMove)
+            while (!agent.HasValidMove)
             {
                 yield return null;
             }
-            move = WhiteAgent.GetNextMove();
+            move = agent.GetNextMove();
         }
         else
         {
-            move = Solver.GetNextMove(Board, ChessColor.w);
+            move = Solver.GetNextMove(Board, color);
         }
         yield return null;
 
@@ -208,8 +192,12 @@ public class ChessGame : MonoBehaviour
 
         yield return new WaitForSecondsRealtime(1f);
 
-        whiteMoving = false;
         Board.PieceDropped(oldPiece, Board.Cells[to.toX, to.toY]);
+    }
+
+    private ChessAgent GetAgentFor(ChessColor color)
+    {
+        return color == ChessColor.w ? WhiteAgent : BlackAgent;
     }
 
     public static PieceType ToPieceType(char piece)
