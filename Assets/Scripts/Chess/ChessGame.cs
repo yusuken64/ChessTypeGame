@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Linq;
+#if !UNITY_WEBGL
 using System.Threading.Tasks;
+#endif
 using UnityEngine;
 
 public class ChessGame : MonoBehaviour
@@ -194,8 +196,11 @@ public class ChessGame : MonoBehaviour
         StartCoroutine(DoAutoTurnRoutine(ChessColor.w));
     }
 
+    private float startTimeSeconds;
+    private float endTimeSeconds;
     private IEnumerator DoAutoTurnRoutine(ChessColor color)
     {
+        startTimeSeconds = Time.realtimeSinceStartup;
         yield return null;
 
         var boardData = SolverBase.ToBoardData(Board);
@@ -220,7 +225,7 @@ public class ChessGame : MonoBehaviour
     // For other platforms, you can use Task.Run() or threading logic
     var task = Task.Run(() =>
     {
-        return solver.GetNextMove(game, color, legalMoves);
+        return solver.GetNextMove(bitboard, color, legalMoves);
     });
 
     // Wait until the task completes
@@ -233,6 +238,9 @@ public class ChessGame : MonoBehaviour
 #endif
 
         Thinking = false;
+        endTimeSeconds = Time.realtimeSinceStartup;
+
+        Debug.Log($"Thinking took {endTimeSeconds - startTimeSeconds} s");
 
         // Using your existing logic for processing the move
         (int fromX, int fromY) from = Board.FromIndex(move.From, Board.Width);

@@ -16,11 +16,12 @@ public class WeightedEvaluatorDrawer : PropertyDrawer
         var evaluatorProperty = property.FindPropertyRelative("Evaluator");
         var weightProperty = property.FindPropertyRelative("Weight");
 
+        // Drawing the weight field
         Rect weightRect = new Rect(position.x, position.y, position.width, lineHeight);
         EditorGUI.PropertyField(weightRect, weightProperty);
 
+        // Drawing the evaluator field
         Rect evaluatorRect = new Rect(position.x, position.y + lineHeight + spacing, position.width, lineHeight);
-
         EditorGUI.LabelField(evaluatorRect, "Evaluator Type:");
 
         string evaluatorName = evaluatorProperty.managedReferenceValue != null
@@ -48,11 +49,27 @@ public class WeightedEvaluatorDrawer : PropertyDrawer
             menu.ShowAsContext();
         }
 
+        // Drawing the properties of the selected evaluator
+        if (evaluatorProperty.managedReferenceValue != null)
+        {
+            Rect evaluatorPropertiesRect = new Rect(position.x, evaluatorRect.y + lineHeight + spacing, position.width, EditorGUIUtility.singleLineHeight * 10); // Adjust height as needed
+            EditorGUI.PropertyField(evaluatorPropertiesRect, evaluatorProperty, true);
+        }
+
         EditorGUI.EndProperty();
     }
 
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
     {
-        return EditorGUIUtility.singleLineHeight * 2 + 4;
+        var evaluatorProperty = property.FindPropertyRelative("Evaluator");
+        float height = EditorGUIUtility.singleLineHeight * 2 + 4;
+
+        if (evaluatorProperty.managedReferenceValue != null)
+        {
+            // Estimate the height for the properties of the evaluator
+            height += EditorGUI.GetPropertyHeight(evaluatorProperty, true);
+        }
+
+        return height;
     }
 }

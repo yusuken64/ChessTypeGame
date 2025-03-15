@@ -13,36 +13,50 @@ public abstract class EvaluatorBase
 [Serializable]
 public class PieceValueEvaluator : EvaluatorBase
 {
+    public List<PieceValueTableSO> PieceSquareTables;
     public override int Score(ChessBitboard bitboard, ChessColor currentPlayer)
     {
         int score = 0;
-                
+
         foreach (var record in bitboard.GetAllPieces())
         {
             int pieceValue = MinimaxABSolver.GetPieceValue(record.pieceType);
+            var position = Board.FromIndex(record.position, bitboard._fileMax);
+            int piecePositionBonus = GetPositionalBonus(record.pieceType, position.x, position.y, bitboard._rankMax, bitboard._fileMax);
+
             if (record.color == currentPlayer)
             {
-                score += pieceValue;
-                //score += GetPositionalBonus(pieceType, record.X, record.Y, game.rankMax, game.fileMax);
+                score += pieceValue + piecePositionBonus;
             }
             else
             {
-                score -= pieceValue;
-                //score -= GetPositionalBonus(pieceType, record.X, record.Y, game.rankMax, game.fileMax);
+                score -= pieceValue + piecePositionBonus;
             }
         }
         return score;
     }
 
-    private static int GetPositionalBonus(PieceType piece, int x, int y, int rankMax, int fileMax)
+    private int GetPositionalBonus(PieceType piece, int x, int y, int rankMax, int fileMax)
     {
-        // Example: Give bonuses for center control
-        int centerX = fileMax / 2;
-        int centerY = rankMax / 2;
+        int[,] pieceTable = GetPieceSquareTable(piece);
 
-        int distanceToCenter = Math.Abs(x - centerX) + Math.Abs(y - centerY);
+        // Convert the x, y positions to match the table
+        // For example, for an 8x8 board, (0,0) is the top-left and (7,7) is the bottom-right.
+        return pieceTable[y, x]; // Table is already aligned to the board coordinates
+    }
 
-        return 5 - distanceToCenter; // Closer to center gets higher score
+    private int[,] GetPieceSquareTable(PieceType piece)
+    {
+        switch (piece)
+        {
+            case PieceType.Pawn: return PieceSquareTables.First(x => x.pieceType == PieceType.Pawn).AsCachedTable();
+            case PieceType.Knight: return PieceSquareTables.First(x => x.pieceType == PieceType.Knight).AsCachedTable();
+            case PieceType.Bishop: return PieceSquareTables.First(x => x.pieceType == PieceType.Bishop).AsCachedTable();
+            case PieceType.Rook: return PieceSquareTables.First(x => x.pieceType == PieceType.Rook).AsCachedTable();
+            case PieceType.Queen: return PieceSquareTables.First(x => x.pieceType == PieceType.Queen).AsCachedTable();
+            case PieceType.King: return PieceSquareTables.First(x => x.pieceType == PieceType.King).AsCachedTable();
+            default: return new int[8, 8]; // Default (no bonus)
+        }
     }
 }
 

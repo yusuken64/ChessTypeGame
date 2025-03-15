@@ -14558,9 +14558,9 @@ MonoBehaviour:
   AutoBlackTurn: 0
   HalfMoveClock: 0
   FullMove: 0
-  MoveMax: 150
-  WhiteSolverDefinition: {fileID: 11400000, guid: c12956c89e0f2b545afb4e3a54648e69, type: 2}
-  BlackSolverDefinition: {fileID: 11400000, guid: c12956c89e0f2b545afb4e3a54648e69, type: 2}
+  MoveMax: 43
+  WhiteSolverDefinition: {fileID: 11400000, guid: 1713839ce7f2ccd4988758d8128174e0, type: 2}
+  BlackSolverDefinition: {fileID: 11400000, guid: 1713839ce7f2ccd4988758d8128174e0, type: 2}
   Thinking: 0
 --- !u!4 &1471562459
 Transform:

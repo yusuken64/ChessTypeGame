@@ -5,12 +5,14 @@ using UnityEngine;
 
 public class MinimaxABSolver : SolverBase
 {
-    [Range(2, 10)]
     public int SolveDepth;
+    public float TimeLimitSeconds;
     public List<WeightedEvaluator> Evaluators;
 
+    private int positionsSearched = 0;
     public override Move GetNextMove(ChessBitboard bitboard, ChessColor color, IEnumerable<Move> legalMoves)
     {
+        positionsSearched = 0;
         bool moveFound = false;
         Move bestMove = default;
         int bestScore = int.MinValue; // Start maximizing
@@ -19,8 +21,19 @@ public class MinimaxABSolver : SolverBase
         int beta = int.MaxValue;
         var solveDepth = SolveDepth;
 
-        foreach (var move in legalMoves)
+        TimeSpan timeLimit = TimeSpan.FromSeconds(TimeLimitSeconds);
+        DateTime startTime = DateTime.Now;
+
+        foreach (var move in OrderMoves(legalMoves, bitboard, color))
         {
+            // Check if the time limit has been exceeded
+            if (DateTime.Now - startTime > timeLimit)
+            {
+                Debug.Log("Time limit reached, returning best move found so far.");
+                Debug.Log($"positionsSearched {positionsSearched}");
+                return bestMove; // Return the best move found so far
+            }
+
             ChessBitboard newGame = bitboard.MakeMove(move);
             int moveScore = Negamax(newGame, solveDepth - 1, alpha, beta, bitboard._rankMax, bitboard._fileMax, color);
 
@@ -33,6 +46,7 @@ public class MinimaxABSolver : SolverBase
             }
         }
 
+        Debug.Log($"positionsSearched {positionsSearched}");
         if (!moveFound)
         {
             throw new Exception("No legal moves");
@@ -42,6 +56,7 @@ public class MinimaxABSolver : SolverBase
 
     private int Negamax(ChessBitboard bitboard, int depth, int alpha, int beta, int rankMax, int fileMax, ChessColor currentPlayer)
     {
+        positionsSearched++;
         ChessColor enemyColor = currentPlayer == ChessColor.w ? ChessColor.b : ChessColor.w;
         int sign = currentPlayer == ChessColor.w ? 1 : -1;
 
@@ -89,8 +104,7 @@ public class MinimaxABSolver : SolverBase
                     score += (int)(evaluatorScore * evaluator.Weight);
                 }
                 return score;
-            })
-            ;    // Then prioritize check moves
+            });
 
         return orderedMoves;
     }
@@ -108,14 +122,6 @@ public class MinimaxABSolver : SolverBase
         (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverPlayer,
         (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverEnemy)
     {
-        int score = 0;
-
-        foreach(var evaluator in Evaluators)
-        {
-            var evaluatorScore = evaluator.Evaluator.Score(bitboard, currentPlayer);
-            score += (int)(evaluatorScore * evaluator.Weight);
-        }
-
         // King Safety Consideration
         if (gameOverEnemy.isCheckmate)
         {
@@ -124,6 +130,14 @@ public class MinimaxABSolver : SolverBase
         if (gameOverPlayer.isCheckmate)
         {
             return int.MinValue; // Losing position
+        }
+
+        int score = 0;
+
+        foreach(var evaluator in Evaluators)
+        {
+            var evaluatorScore = evaluator.Evaluator.Score(bitboard, currentPlayer);
+            score += (int)(evaluatorScore * evaluator.Weight);
         }
 
         // Handle Stalemate conditions
