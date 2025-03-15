@@ -47,7 +47,7 @@ public class ChessGame : MonoBehaviour
         var boardRecord = fenData.Pieces.Select(x => new PieceRecord()
         {
             IsWhite = x.Player == ChessColor.w,
-            PieceType = ToPieceType(x.Piece),
+            PieceType = x.Piece,
             X = x.X,
             Y = x.Y
         });
@@ -62,6 +62,7 @@ public class ChessGame : MonoBehaviour
         {
             DoWhiteTurn();
         }
+        UpdateDraggable();
     }
 
     private void OnDestroy()
@@ -74,7 +75,7 @@ public class ChessGame : MonoBehaviour
     {
         HandleSpecialMoves(movedPiece, originalCell, capturedPiece, destinationCell);
 
-        var otherColor = SolverBase.OtherColor(movedPiece.PieceColor);
+        var otherColor = movedPiece.PieceColor.Opponent();
         (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) = HandleCheck(otherColor);
 
         var chessUI = FindObjectOfType<ChessUI>();
@@ -113,7 +114,7 @@ public class ChessGame : MonoBehaviour
             FullMove++;
         }
         HalfMoveClock++;
-        ActivePlayer = SolverBase.OtherColor(movedPiece.PieceColor);
+        ActivePlayer = movedPiece.PieceColor.Opponent();
 
         bool moveLimit = FullMove >= MoveMax;
         if (moveLimit)
@@ -135,6 +136,15 @@ public class ChessGame : MonoBehaviour
                 DoWhiteTurn();
             }
         }
+
+        UpdateDraggable();
+    }
+
+    private void UpdateDraggable()
+    {
+        Board.Cells.OfType<Cell>()
+            .ToList()
+            .ForEach(x => x.CurrentPiece?.SetIsDraggable(x.CurrentPiece.PieceColor == ActivePlayer));
     }
 
     internal ChessColor GetActivePlayer()
@@ -169,9 +179,9 @@ public class ChessGame : MonoBehaviour
     {
         var boardData = SolverBase.ToBoardData(Board);
         var fen = FENParser.BoardToFEN(boardData, boardData.GetLength(0), boardData.GetLength(1));
-        ChessGameRecord game = new ChessGameRecord(fen, boardData.GetLength(0), boardData.GetLength(1), Board.CanQueenPromote);
+        var bitboard = BitboardHelper.FromFen(fen, boardData.GetLength(0), boardData.GetLength(1), Board.CanQueenPromote);
 
-        return game.ChessBitboard.CheckGameOver(chessColor);
+        return bitboard.CheckGameOver(chessColor);
     }
 
     public void DoBlackTurn()
@@ -188,9 +198,9 @@ public class ChessGame : MonoBehaviour
     {
         yield return null;
 
-        PieceRecord?[,] boardData = SolverBase.ToBoardData(Board);
-        var fen = FENParser.BoardToFEN(boardData, Board.Cells.GetLength(0), Board.Cells.GetLength(1), color.ToString());
-        ChessGameRecord game = new ChessGameRecord(fen, Board.Cells.GetLength(0), Board.Cells.GetLength(1), Board.CanQueenPromote);
+        var boardData = SolverBase.ToBoardData(Board);
+        var fen = FENParser.BoardToFEN(boardData, boardData.GetLength(0), boardData.GetLength(1));
+        var bitboard = BitboardHelper.FromFen(fen, boardData.GetLength(0), boardData.GetLength(1), Board.CanQueenPromote);
 
         var solver = GetSolverFor(color);
         if (solver == null)
@@ -198,14 +208,14 @@ public class ChessGame : MonoBehaviour
             throw new Exception($"Solver not defined for {color}");
         }
 
-        var legalMoves = SolverBase.GetLegalMoves(game, color);
+        var legalMoves = SolverBase.GetLegalMoves(bitboard, color);
         Thinking = true;
         FindObjectOfType<ChessUI>().UpdateUI();
 
 #if UNITY_WEBGL
         // For WebGL, simulate async work without Task.Run() (as WebGL doesn't support multi-threading)
-        yield return new WaitForSeconds(1f);  // Simulate delay as async work
-        var move = solver.GetNextMove(game, color, legalMoves);
+        yield return null;
+        var move = solver.GetNextMove(bitboard, color, legalMoves);
 #else
     // For other platforms, you can use Task.Run() or threading logic
     var task = Task.Run(() =>

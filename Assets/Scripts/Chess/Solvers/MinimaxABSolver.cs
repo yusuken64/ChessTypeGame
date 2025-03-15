@@ -9,7 +9,7 @@ public class MinimaxABSolver : SolverBase
     public int SolveDepth;
     public List<WeightedEvaluator> Evaluators;
 
-    public override Move GetNextMove(ChessGameRecord game, ChessColor color, IEnumerable<Move> legalMoves)
+    public override Move GetNextMove(ChessBitboard bitboard, ChessColor color, IEnumerable<Move> legalMoves)
     {
         bool moveFound = false;
         Move bestMove = default;
@@ -21,12 +21,8 @@ public class MinimaxABSolver : SolverBase
 
         foreach (var move in legalMoves)
         {
-            ChessGameRecord newGame = new ChessGameRecord(game.fen, game.rankMax, game.fileMax, game.canPawnPromote);
-            newGame.MakeMove(move);
-
-            int moveScore = Negamax(newGame, solveDepth - 1, alpha, beta, game.rankMax, game.fileMax, color);
-
-            //Debug.Log($"Score {moveScore}");
+            ChessBitboard newGame = bitboard.MakeMove(move);
+            int moveScore = Negamax(newGame, solveDepth - 1, alpha, beta, bitboard._rankMax, bitboard._fileMax, color);
 
             if (!moveFound ||
                 moveScore > bestScore )
@@ -44,18 +40,18 @@ public class MinimaxABSolver : SolverBase
         return bestMove;
     }
 
-    private int Negamax(ChessGameRecord game, int depth, int alpha, int beta, int rankMax, int fileMax, ChessColor currentPlayer)
+    private int Negamax(ChessBitboard bitboard, int depth, int alpha, int beta, int rankMax, int fileMax, ChessColor currentPlayer)
     {
         ChessColor enemyColor = currentPlayer == ChessColor.w ? ChessColor.b : ChessColor.w;
         int sign = currentPlayer == ChessColor.w ? 1 : -1;
 
-        var gameOver = CheckGameOver(game, currentPlayer);
+        var gameOver = bitboard.CheckGameOver(currentPlayer);
         if (depth <= 0 || gameOver.isCheckmate || gameOver.isStalemate)
         {
-            return sign * EvaluateBoard(game, currentPlayer, gameOver, CheckGameOver(game, enemyColor));
+            return sign * EvaluateBoard(bitboard, currentPlayer, gameOver, bitboard.CheckGameOver(enemyColor));
         }
 
-        var possibleMoves = GetLegalMoves(game, currentPlayer);
+        var possibleMoves = GetLegalMoves(bitboard, currentPlayer);
 
         // Handle case of no legal moves (either checkmate or stalemate)
         if (!possibleMoves.Any())
@@ -65,10 +61,9 @@ public class MinimaxABSolver : SolverBase
 
         int bestScore = int.MinValue;
 
-        foreach (var move in OrderMoves(possibleMoves, game, currentPlayer))
+        foreach (var move in OrderMoves(possibleMoves, bitboard, currentPlayer))
         {
-            ChessGameRecord newGame = new ChessGameRecord(game.fen, rankMax, fileMax, game.canPawnPromote);
-            newGame.MakeMove(move);
+            var newGame = bitboard.MakeMove(move);
             int score = -Negamax(newGame, depth - 1, -beta, -alpha, rankMax, fileMax, enemyColor);
 
             bestScore = Math.Max(bestScore, score);
@@ -78,16 +73,15 @@ public class MinimaxABSolver : SolverBase
         return bestScore;
     }
 
-    private IEnumerable<Move> OrderMoves(IEnumerable<Move> possibleMoves, ChessGameRecord game, ChessColor currentPlayer)
+    private IEnumerable<Move> OrderMoves(IEnumerable<Move> possibleMoves, ChessBitboard bitboard, ChessColor currentPlayer)
     {
         // Prioritize captures first, then checks, and finally other moves.
         var orderedMoves = possibleMoves
-            .OrderByDescending(move => game.IsCapture(move, currentPlayer))    // Capture moves first (descending to get captures first)
-            .ThenBy(move => IsCheckMove(move, game, currentPlayer))
+            .OrderByDescending(move => BitboardHelper.IsCapture(ref bitboard, move, currentPlayer))    // Capture moves first (descending to get captures first)
+            .ThenBy(move => IsCheckMove(move, bitboard, currentPlayer))
             .ThenBy(move =>
             {
-                ChessGameRecord newGame = new ChessGameRecord(game.fen, game.rankMax, game.fileMax, game.canPawnPromote);
-                newGame.MakeMove(move);
+                ChessBitboard newGame = bitboard.MakeMove(move);
                 int score = 0;
                 foreach (var evaluator in Evaluators)
                 {
@@ -101,17 +95,15 @@ public class MinimaxABSolver : SolverBase
         return orderedMoves;
     }
 
-    private bool IsCheckMove(Move move, ChessGameRecord game, ChessColor currentPlayer)
+    private bool IsCheckMove(Move move, ChessBitboard bitboard, ChessColor currentPlayer)
     {
-        // Simulate the move to check if it places the opponent in check
-        ChessGameRecord newGame = new ChessGameRecord(game.fen, game.rankMax, game.fileMax, game.canPawnPromote);
-        newGame.MakeMove(move);
-        var gameOver = CheckGameOver(newGame, currentPlayer);
+        var newGame = bitboard.MakeMove(move);
+        var gameOver = newGame.CheckGameOver(currentPlayer);
         return gameOver.isCheck;
     }
 
     public int EvaluateBoard(
-        ChessGameRecord game,
+        ChessBitboard bitboard,
         ChessColor currentPlayer,
         (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverPlayer,
         (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverEnemy)
@@ -120,7 +112,7 @@ public class MinimaxABSolver : SolverBase
 
         foreach(var evaluator in Evaluators)
         {
-            var evaluatorScore = evaluator.Evaluator.Score(game, currentPlayer);
+            var evaluatorScore = evaluator.Evaluator.Score(bitboard, currentPlayer);
             score += (int)(evaluatorScore * evaluator.Weight);
         }
 

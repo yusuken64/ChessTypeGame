@@ -13,7 +13,7 @@ public class RandomSolverDefinition : SolverDefinitionBase
 
     internal class RandomSolver : SolverBase
     {
-        public override Move GetNextMove(ChessGameRecord game, ChessColor color, IEnumerable<Move> legalMoves)
+        public override Move GetNextMove(ChessBitboard chessBitboard, ChessColor color, IEnumerable<Move> legalMoves)
         {
             return legalMoves.OrderBy(x => Guid.NewGuid()).First();
         }

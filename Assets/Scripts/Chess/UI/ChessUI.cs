@@ -89,7 +89,7 @@ public class ChessUI : MonoBehaviour
         var boardRecord = fenData.Pieces.Select(x => new PieceRecord()
         {
             IsWhite = x.Player == ChessColor.w,
-            PieceType = ChessGame.ToPieceType(x.Piece),
+            PieceType = x.Piece,
             X = x.X,
             Y = x.Y
         });

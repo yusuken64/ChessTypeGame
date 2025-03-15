@@ -47,7 +47,11 @@ public class Game : MonoBehaviour
             return;
         }
 
-        if (CurrentGameState == GameState.Paused) { return; }
+        if (CurrentGameState == GameState.Paused)
+        {
+            UpdateDraggable();
+            return;
+        }
 
         AudioManager.Instance.PlaySFX(AudioManager.Instance.Capture);
         Combo++;
@@ -62,6 +66,10 @@ public class Game : MonoBehaviour
         if (blackPieceCount == 0)
         {
             AdvanceStage();
+        }
+        else
+        {
+            UpdateDraggable();
         }
     }
 
@@ -133,6 +141,15 @@ public class Game : MonoBehaviour
             Solution = Board.Solution,
             LevelNum = Level
         });
+
+        UpdateDraggable();
+    }
+
+    public void UpdateDraggable()
+    {
+        Board.Cells.OfType<Cell>()
+            .ToList()
+            .ForEach(x => x.CurrentPiece?.SetIsDraggable(x.CurrentPiece.PieceColor == ChessColor.w));
     }
 
     private void Update()

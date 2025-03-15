@@ -48,9 +48,10 @@ public class Board : MonoBehaviour
         boardData[originalCell.X, originalCell.Y] = null;
         boardData[cell.X, cell.Y] = originalRecord;
 
-        string fen = FENParser.BoardToFEN(boardData, boardData.GetLength(0), boardData.GetLength(1));
-        ChessGameRecord game = new ChessGameRecord(fen, boardData.GetLength(0), boardData.GetLength(1), CanQueenPromote);
-        var isInCheck = game.IsInCheck(piece.PieceColor);
+        var fen = FENParser.BoardToFEN(boardData, boardData.GetLength(0), boardData.GetLength(1));
+        var bitboard = BitboardHelper.FromFen(fen, boardData.GetLength(0), boardData.GetLength(1), CanQueenPromote);
+
+        var isInCheck = bitboard.IsKingInCheck(piece.PieceColor);
 
         if (isInCheck)
         {
@@ -62,58 +63,6 @@ public class Board : MonoBehaviour
     void Start()
     {
         ReloadExistingBoard();
-    }
-
-    public void ReinitializeData()
-    {
-        string data = ",,,,," +
-                      ",,,,," +
-                      ",,,,," +
-                      ",BR,BB,BN,," +
-                      ",BQ,WP,BN,";
-
-        string[] csv = data.Split(',');
-
-        IEnumerable<PieceRecord?> boardRecord = csv.Select((value, index) =>
-        {
-            if (value.Length == 0) { return null; }
-
-            PieceType pieceMovement = default;
-            char letter = value[1];
-            switch (letter)
-            {
-                case 'K':
-                    pieceMovement = PieceType.King;
-                    break;
-                case 'Q':
-                    pieceMovement = PieceType.Queen;
-                    break;
-                case 'N':
-                    pieceMovement = PieceType.Knight;
-                    break;
-                case 'B':
-                    pieceMovement = PieceType.Bishop;
-                    break;
-                case 'R':
-                    pieceMovement = PieceType.Rook;
-                    break;
-                case 'P':
-                    pieceMovement = PieceType.Pawn;
-                    break;
-            }
-
-            int x = index % 5;
-            int y = 4 - index / 5;
-
-            return new PieceRecord?(new PieceRecord(
-                pieceMovement,
-                value.StartsWith('W'),
-                x,
-                y
-            ));
-        });
-
-        SetState(boardRecord.OfType<PieceRecord>());
     }
 
     internal void ReplacePiece(Cell destinationCell, PieceType promotionChoice, Piece originalPiece)
@@ -318,10 +267,13 @@ public class Board : MonoBehaviour
     public IEnumerable<Cell> GetMovabableCells(Piece piece)
     {
         var originCell = Cells.Cast<Cell>().FirstOrDefault(cell => cell.CurrentPiece == piece);
-        PieceRecord?[,] boardData2 = SolverBase.ToBoardData(this);
-        string fen = FENParser.BoardToFEN(boardData2, Cells.GetLength(0), Cells.GetLength(1));
-        ChessGameRecord game = new ChessGameRecord(fen, Cells.GetLength(0), Cells.GetLength(1), CanQueenPromote);
-        IEnumerable<Move> validMoves = game.GetCandidateMoves((originCell.X, originCell.Y));
+        PieceRecord?[,] boardData = SolverBase.ToBoardData(this);
+        string fen = FENParser.BoardToFEN(boardData, Cells.GetLength(0), Cells.GetLength(1));
+
+        var bitboard = BitboardHelper.FromFen(fen, Cells.GetLength(0), Cells.GetLength(1), CanQueenPromote);
+        var index = ToIndex(originCell.X, originCell.Y, Cells.GetLength(0));
+        var validMoves = bitboard.GetCandidateMoves(index).ToList();
+
         var movableCells = validMoves.Select(x => FromIndex(x.To, Cells.GetLength(0)))
             .Select(x => Cells[x.x, x.y]);
         return movableCells;

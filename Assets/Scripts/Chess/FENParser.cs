@@ -56,7 +56,7 @@ public class FENParser
             else if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
             {
                 if (x >= fileMax || y < 0) throw new ArgumentException("Invalid FEN: Piece placement out of bounds.");
-                fenData.Pieces.Add(new FenRecord { X = x++, Y = y, Piece = char.ToUpper(c), Player = c < 'a' ? ChessColor.w : ChessColor.b });
+                fenData.Pieces.Add(new FenRecord { X = x++, Y = y, Piece = FromFEN(char.ToUpper(c)).piece, Player = c < 'a' ? ChessColor.w : ChessColor.b });
             }
             else throw new ArgumentException("Invalid FEN: Unexpected character in board setup.");
         }
@@ -127,6 +127,25 @@ public class FENParser
             PieceType.Knight => isWhite ? 'N' : 'n',
             PieceType.Pawn => isWhite ? 'P' : 'p',
             _ => throw new ArgumentException($"Invalid piece: {piece}"),
+        };
+    }
+    public static (PieceType piece, bool isWhite) FromFEN(char fenChar)
+    {
+        return fenChar switch
+        {
+            'K' => (PieceType.King, true),
+            'Q' => (PieceType.Queen, true),
+            'B' => (PieceType.Bishop, true),
+            'R' => (PieceType.Rook, true),
+            'N' => (PieceType.Knight, true),
+            'P' => (PieceType.Pawn, true),
+            'k' => (PieceType.King, false),
+            'q' => (PieceType.Queen, false),
+            'b' => (PieceType.Bishop, false),
+            'r' => (PieceType.Rook, false),
+            'n' => (PieceType.Knight, false),
+            'p' => (PieceType.Pawn, false),
+            _ => throw new ArgumentException($"Invalid FEN character: {fenChar}"),
         };
     }
 }

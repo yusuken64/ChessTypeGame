@@ -45,30 +45,29 @@ public class ChessAgent : Agent
             _thinking = true;
             var boardData = MinimaxABSolver.ToBoardData(ChessGame.Board);
             string fen = FENParser.BoardToFEN(boardData, ChessGame.Board.Width, ChessGame.Board.Height);
-            ChessGameRecord game = new ChessGameRecord(fen, ChessGame.Board.Width, ChessGame.Board.Height, ChessGame.Board.CanQueenPromote);
+            var bitboard = BitboardHelper.FromFen(fen, boardData.GetLength(0), boardData.GetLength(1), ChessGame.Board.CanQueenPromote);
             var position = Board.FromIndex(from, ChessGame.Board.Width);
-            IEnumerable<Move> validMoves = game.GetCandidateMoves((position.x, position.y));
-            IEnumerable<Move> validMoves2 = validMoves.Where(x =>
-                game.ChessBitboard.IsAlliedPieceAt(from, ChessColor) &&
-                x.From == from &&
-                x.To == to
-            );
-            if (validMoves2.Any())
+            var validPiece = bitboard.IsAlliedPieceAt(from, ChessColor);
+
+            var legalMoveExists = BitboardHelper.GetLegalMovesForPosition(ref bitboard, (position.x, position.y))
+                .Any(x => x.To == to && x.From == from);
+            if (validPiece && legalMoveExists)
             {
                 HasValidMove = true;
-                currentValidMove = validMoves2.First();
+                currentValidMove = BitboardHelper.GetLegalMovesForPosition(ref bitboard, (position.x, position.y))
+                    .First(x => x.To == to && x.From == from);
                 var fromPos = Board.FromIndex(currentValidMove.From, ChessGame.Board.Width);
                 var toPos = Board.FromIndex(currentValidMove.To, ChessGame.Board.Width);
 
-                var enemyColor = MinimaxABSolver.OtherColor(ChessColor);
-                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverPlayer = MinimaxABSolver.CheckGameOver(game, ChessColor);
-                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverEnemy = MinimaxABSolver.CheckGameOver(game, enemyColor);
-                int score = Solver.EvaluateBoard(game, ChessColor, gameOverPlayer, gameOverEnemy);
+                var enemyColor = ChessColor.Opponent();
+                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverPlayer = bitboard.CheckGameOver(ChessColor);
+                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverEnemy = bitboard.CheckGameOver(enemyColor);
+                int score = Solver.EvaluateBoard(bitboard, ChessColor, gameOverPlayer, gameOverEnemy);
 
-                game.MakeMove(currentValidMove);
+                var afterMoveBitboard = bitboard.MakeMove(currentValidMove);
 
-                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverPlayer2 = MinimaxABSolver.CheckGameOver(game, ChessColor);
-                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverEnemy2 = MinimaxABSolver.CheckGameOver(game, enemyColor);
+                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverPlayer2 = afterMoveBitboard.CheckGameOver(ChessColor);
+                (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) gameOverEnemy2 = afterMoveBitboard.CheckGameOver(enemyColor);
 
                 if (gameOverPlayer2.isCheckmate || gameOverPlayer2.isCheck)
                 {
@@ -77,7 +76,7 @@ public class ChessAgent : Agent
                     return;
                 }
 
-                int score2 = Solver.EvaluateBoard(game, ChessColor, gameOverPlayer2, gameOverEnemy2);
+                int score2 = Solver.EvaluateBoard(afterMoveBitboard, ChessColor, gameOverPlayer2, gameOverEnemy2);
 
                 var delta = score2 - score + ValidMoveReward;
                 Debug.Log($"{ChessColor}:{delta}");
@@ -107,26 +106,26 @@ public class ChessAgent : Agent
     {
         var boardData = MinimaxABSolver.ToBoardData(ChessGame.Board);
         string fen = FENParser.BoardToFEN(boardData, ChessGame.Board.Width, ChessGame.Board.Height);
-        ChessGameRecord game = new ChessGameRecord(fen, ChessGame.Board.Width, ChessGame.Board.Height, ChessGame.Board.CanQueenPromote);
-        
+        var bitboard = BitboardHelper.FromFen(fen, boardData.GetLength(0), boardData.GetLength(1), ChessGame.Board.CanQueenPromote);
+
         sensor.AddObservation(ChessColor == ChessColor.w ? 0 : 1);
-        sensor.AddObservation(game.rankMax);
-        sensor.AddObservation(game.fileMax);
+        sensor.AddObservation(bitboard._rankMax);
+        sensor.AddObservation(bitboard._fileMax);
 
         List<ulong> bitBoards = new List<ulong>()
         {
-            game.ChessBitboard.WhitePawns,
-            game.ChessBitboard.BlackPawns,
-            game.ChessBitboard.WhiteKnights,
-            game.ChessBitboard.BlackKnights,
-            game.ChessBitboard.WhiteBishops,
-            game.ChessBitboard.BlackBishops,
-            game.ChessBitboard.WhiteRooks,
-            game.ChessBitboard.BlackRooks,
-            game.ChessBitboard.WhiteQueens,
-            game.ChessBitboard.BlackQueens,
-            game.ChessBitboard.WhiteKings,
-            game.ChessBitboard.BlackKings,
+            bitboard.WhitePawns,
+            bitboard.BlackPawns,
+            bitboard.WhiteKnights,
+            bitboard.BlackKnights,
+            bitboard.WhiteBishops,
+            bitboard.BlackBishops,
+            bitboard.WhiteRooks,
+            bitboard.BlackRooks,
+            bitboard.WhiteQueens,
+            bitboard.BlackQueens,
+            bitboard.WhiteKings,
+            bitboard.BlackKings,
         };
 
         List<float> bitBoardsAsInts = PackUlongsToFloats(bitBoards);

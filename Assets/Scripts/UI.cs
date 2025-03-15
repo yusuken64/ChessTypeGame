@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -47,7 +48,16 @@ public class UI : MonoBehaviour
         HighScoreText.text = $"Hi Score:{Game.HighScore}";
         AudioManager.Instance.PlayMusic(AudioManager.Instance.MainMenuMusic, false);
 
-        FindObjectOfType<Board>().ReinitializeData();
+        FENData fenData = FENParser.ParseFEN(
+            "5/" +
+            "5/" +
+            "5/" +
+            "1rkn1/" +
+            "1qPb1 w KQkq - 0 1", 5, 5);
+        System.Collections.Generic.IEnumerable<PieceRecord> boardRecord = fenData.Pieces
+            .Select(x => new PieceRecord(x.Piece, x.Player == ChessColor.w, x.X, x.Y));
+        FindObjectOfType<Board>().SetState(boardRecord);
+        Game.UpdateDraggable();
     }
 
     public void Start_Clicked()

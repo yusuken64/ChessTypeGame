@@ -16,14 +16,24 @@ public class Piece : MonoBehaviour
         var draggable = GetComponent<Draggable>();
         draggable.OnHold = () =>
         {
-            if (this.PieceColor == ChessColor.w)
+            var board = FindObjectOfType<Board>();
+            if (board.Echo)
             {
-                var board = FindObjectOfType<Board>();
-                board.PiecePickedUp(this);
+                if (this.PieceColor == ChessColor.w)
+                {
+                    board.PiecePickedUp(this);
+                }
+                else
+                {
+                    //can't pick up
+                }
             }
             else
             {
-                //can't pick up
+                if (FindObjectOfType<ChessGame>()?.ActivePlayer == this.PieceColor)
+                {
+                    board.PiecePickedUp(this);
+                }
             }
         };
         draggable.OnReleased = (cell) =>
@@ -59,14 +69,18 @@ public class Piece : MonoBehaviour
         if (pieceColor == ChessColor.w)
         {
             CurrentSprite.sprite = WhiteSprite;
-            var draggable = GetComponent<Draggable>();
-            draggable.IsDraggable = true;
         }
         else
         {
             CurrentSprite.sprite = BlackSprite;
-            var draggable = GetComponent<Draggable>();
-            draggable.IsDraggable = false;
         }
+    }
+
+    public void SetIsDraggable(bool isDraggable)
+    {
+        var draggable = GetComponent<Draggable>();
+        //draggable.IsDraggable = false;
+        draggable.IsDraggable = isDraggable;
+
     }
 }

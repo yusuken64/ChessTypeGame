@@ -7,22 +7,20 @@ using UnityEngine;
 [Serializable]
 public abstract class EvaluatorBase
 {
-    public abstract int Score(ChessGameRecord game, ChessColor currentPlayer);
+    public abstract int Score(ChessBitboard bitboard, ChessColor currentPlayer);
 }
 
 [Serializable]
 public class PieceValueEvaluator : EvaluatorBase
 {
-    public override int Score(ChessGameRecord game, ChessColor currentPlayer)
+    public override int Score(ChessBitboard bitboard, ChessColor currentPlayer)
     {
         int score = 0;
-
-        foreach (FenRecord record in game.FenData.Pieces)
+                
+        foreach (var record in bitboard.GetAllPieces())
         {
-            PieceType pieceType = ChessGame.ToPieceType(record.Piece);
-
-            int pieceValue = MinimaxABSolver.GetPieceValue(pieceType);
-            if (record.Player == currentPlayer)
+            int pieceValue = MinimaxABSolver.GetPieceValue(record.pieceType);
+            if (record.color == currentPlayer)
             {
                 score += pieceValue;
                 //score += GetPositionalBonus(pieceType, record.X, record.Y, game.rankMax, game.fileMax);
@@ -51,14 +49,25 @@ public class PieceValueEvaluator : EvaluatorBase
 [Serializable]
 public class PositionalValueEvaluator : EvaluatorBase
 {
-    public override int Score(ChessGameRecord game, ChessColor currentPlayer)
+    public override int Score(ChessBitboard bitboard, ChessColor currentPlayer)
     {
         int score = 0;
 
-        // Mobility (more valid moves is usually good)
-        int playerMoves = SolverBase.GetLegalMoves(game, currentPlayer).Count();
-        int enemyMoves = SolverBase.GetLegalMoves(game, MinimaxABSolver.OtherColor(currentPlayer)).Count(); ;
-        score += (int)((playerMoves - enemyMoves));
+        foreach (var piece in bitboard.GetAllPieces())
+        {
+            var legalMoveCount = 
+                BitboardHelper.GetLegalMovesForPosition(ref bitboard, Board.FromIndex(piece.position, bitboard._fileMax))
+                .Count();
+            
+            if (piece.color == currentPlayer)
+            {
+                score += (int)legalMoveCount;
+            }
+            else
+            {
+                score -= (int)legalMoveCount;
+            }
+        }
 
         return score;
     }
@@ -67,21 +76,22 @@ public class PositionalValueEvaluator : EvaluatorBase
 [Serializable]
 public class AttackingValueEvaluator : EvaluatorBase
 {
-    public override int Score(ChessGameRecord game, ChessColor currentPlayer)
+    public override int Score(ChessBitboard bitboard, ChessColor currentPlayer)
     {
         int score = 0;
 
         // Mobility (more valid moves is usually good)
-        int playerMoves = MinimaxABSolver.GetLegalMoves(game, currentPlayer).Count();
-        int enemyMoves = MinimaxABSolver.GetLegalMoves(game, MinimaxABSolver.OtherColor(currentPlayer)).Count();
+        IEnumerable<Move> playerLegalMoves = SolverBase.GetLegalMoves(bitboard, currentPlayer);
+        int playerMoves = playerLegalMoves.Count();
+        int enemyMoves = SolverBase.GetLegalMoves(bitboard, currentPlayer.Opponent()).Count();
         score += (int)((playerMoves - enemyMoves));
 
         // Reward for attacking enemy pieces
-        foreach (var move in MinimaxABSolver.GetLegalMoves(game, currentPlayer))
+        foreach (var move in playerLegalMoves)
         {
-            if (game.IsCapture(move, currentPlayer))
+            if (BitboardHelper.IsCapture(ref bitboard, move, currentPlayer))
             {
-                var capturedPiece = game.GetPieceAt(move.To, currentPlayer);
+                var capturedPiece = BitboardHelper.GetPieceAt(ref bitboard, move.To, currentPlayer);
                 if (capturedPiece.HasValue)
                 {
                     score += GetPieceValue(capturedPiece.Value); // Reward based on piece value

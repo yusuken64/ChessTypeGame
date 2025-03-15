@@ -4,22 +4,13 @@ using UnityEngine;
 
 public abstract class SolverBase
 {
-    public static (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) CheckGameOver(ChessGameRecord game, ChessColor player)
+    public static IEnumerable<Move> GetLegalMoves(ChessBitboard bitboard, ChessColor player)
     {
-        return game.CheckGameOver(player);
+        return bitboard.GetAllPieces()
+            .Where(x => x.color == player)
+            .SelectMany(piece => BitboardHelper.GetLegalMovesForPosition(ref bitboard, Board.FromIndex(piece.position, bitboard._fileMax)));
     }
 
-    public static IEnumerable<Move> GetLegalMoves(ChessGameRecord game, ChessColor player)
-    {
-        return game.FenData.Pieces
-            .Where(x => x.Player == player)
-            .SelectMany(piece => game.GetLegalMoves((piece.X, piece.Y)));
-    }
-
-    public static ChessColor OtherColor(ChessColor color)
-    {
-        return color == ChessColor.w ? ChessColor.b : ChessColor.w;
-    }
     public static PieceRecord?[,] ToBoardData(Board board)
     {
         PieceRecord?[,] boardData = new PieceRecord?[board.Cells.GetLength(0), board.Cells.GetLength(1)];
@@ -38,5 +29,5 @@ public abstract class SolverBase
 
         return boardData;
     }
-    public abstract Move GetNextMove(ChessGameRecord game, ChessColor color, IEnumerable<Move> legalMoves);
+    public abstract Move GetNextMove(ChessBitboard chessBitboard, ChessColor color, IEnumerable<Move> legalMoves);
 }

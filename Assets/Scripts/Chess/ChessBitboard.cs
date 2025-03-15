@@ -1,90 +1,114 @@
 ﻿using System;
 using System.Collections.Generic;
 
-public struct ChessBitboard
+public readonly struct ChessBitboard
 {
     public static Array PIECE_TYPES = Enum.GetValues(typeof(PieceType));
 
     // Each bitboard represents a piece type for a specific color
-    public ulong WhitePawns;
-    public ulong BlackPawns;
-    public ulong WhiteKnights;
-    public ulong BlackKnights;
-    public ulong WhiteBishops;
-    public ulong BlackBishops;
-    public ulong WhiteRooks;
-    public ulong BlackRooks;
-    public ulong WhiteQueens;
-    public ulong BlackQueens;
-    public ulong WhiteKings;
-    public ulong BlackKings;
+    public readonly ulong WhitePawns;
+    public readonly ulong BlackPawns;
+    public readonly ulong WhiteKnights;
+    public readonly ulong BlackKnights;
+    public readonly ulong WhiteBishops;
+    public readonly ulong BlackBishops;
+    public readonly ulong WhiteRooks;
+    public readonly ulong BlackRooks;
+    public readonly ulong WhiteQueens;
+    public readonly ulong BlackQueens;
+    public readonly ulong WhiteKings;
+    public readonly ulong BlackKings;
 
-    private int _rankMax;
-    private int _fileMax;
-    private bool _promote;
+    public readonly int _rankMax;
+    public readonly int _fileMax;
+    public readonly bool _promote;
 
     //rankMax and fileMax should be between 1 and 8
-    public ChessBitboard(string fen, int rankMax, int fileMax, bool promote)
+    public ChessBitboard(
+    ulong whitePawns, ulong blackPawns, ulong whiteKnights, ulong blackKnights,
+    ulong whiteBishops, ulong blackBishops, ulong whiteRooks, ulong blackRooks,
+    ulong whiteQueens, ulong blackQueens, ulong whiteKings, ulong blackKings,
+    int rankMax, int fileMax, bool canPromote)
     {
+        WhitePawns = whitePawns;
+        BlackPawns = blackPawns;
+        WhiteKnights = whiteKnights;
+        BlackKnights = blackKnights;
+        WhiteBishops = whiteBishops;
+        BlackBishops = blackBishops;
+        WhiteRooks = whiteRooks;
+        BlackRooks = blackRooks;
+        WhiteQueens = whiteQueens;
+        BlackQueens = blackQueens;
+        WhiteKings = whiteKings;
+        BlackKings = blackKings;
         _rankMax = rankMax;
         _fileMax = fileMax;
-        _promote = promote;
+        _promote = canPromote;
+    }
 
-        // Initialize all the bitboards to empty
-        WhitePawns = BlackPawns = WhiteKnights = BlackKnights = 0;
-        WhiteBishops = BlackBishops = WhiteRooks = BlackRooks = 0;
-        WhiteQueens = BlackQueens = WhiteKings = BlackKings = 0;
+    //Instead of calling With repeatedly, batch updates into a single With call.
+    //board = board.With(whitePawns: board.WhitePawns & mask, whiteKnights: board.WhiteKnights & mask);
+    public ChessBitboard With(
+        ulong? whitePawns = null, ulong? blackPawns = null,
+        ulong? whiteKnights = null, ulong? blackKnights = null,
+        ulong? whiteBishops = null, ulong? blackBishops = null,
+        ulong? whiteRooks = null, ulong? blackRooks = null,
+        ulong? whiteQueens = null, ulong? blackQueens = null,
+        ulong? whiteKings = null, ulong? blackKings = null,
+        int? rankMax = null, int? fileMax = null, bool? canPromote = null)
+    {
+        return new ChessBitboard(
+            whitePawns ?? WhitePawns,
+            blackPawns ?? BlackPawns,
+            whiteKnights ?? WhiteKnights,
+            blackKnights ?? BlackKnights,
+            whiteBishops ?? WhiteBishops,
+            blackBishops ?? BlackBishops,
+            whiteRooks ?? WhiteRooks,
+            blackRooks ?? BlackRooks,
+            whiteQueens ?? WhiteQueens,
+            blackQueens ?? BlackQueens,
+            whiteKings ?? WhiteKings,
+            blackKings ?? BlackKings,
+            fileMax ?? _fileMax,
+            rankMax ?? _rankMax,
+            canPromote ?? _promote
+        );
+    }
 
-        // Split only if there is enough data
-        var spaceIndex = fen.IndexOf(' ');
-        if (spaceIndex == -1) throw new ArgumentException("Invalid FEN format.");
-
-        string boardData = fen[..spaceIndex]; // Get only board layout
-        var boardLayout = boardData.Split('/');
-
-        if (boardLayout.Length != rankMax)
-            throw new ArgumentException("Invalid FEN: Rank count mismatch.");
-
-        int rankOffset = rankMax - 1;
-        for (int rank = 0; rank < rankMax; rank++)
+    // Method that returns IEnumerable of pieces and their positions
+    public IEnumerable<(PieceType pieceType, int position, ChessColor color)> GetAllPieces()
+    {
+        // Yield pieces for each type, white and black
+        foreach (var (bitboard, pieceType, color) in GetPieceBitboards())
         {
-            string rankString = boardLayout[rank];
-            int file = 0;
-
-            for (int i = 0; i < rankString.Length; i++)
+            for (int position = 0; position < 64; position++)
             {
-                char c = rankString[i];
-                if (c >= '1' && c <= '8') // Numeric empty squares
+                if ((bitboard & (1UL << position)) != 0)
                 {
-                    file += c - '0';
-                }
-                else // Piece present
-                {
-                    SetPieceForFEN(c, rankOffset - rank, file);
-                    file++;
+                    yield return (pieceType, position, color);
                 }
             }
         }
     }
 
-    // Helper method to set a piece on the correct bitboard based on the FEN character
-    private void SetPieceForFEN(char piece, int rank, int file)
+    // Helper method to iterate over the bitboards and corresponding piece types
+    public IEnumerable<(ulong positionIndex, PieceType pieceType, ChessColor color)> GetPieceBitboards()
     {
-        int position = (rank * _fileMax) + file;
-        ChessColor color = char.IsUpper(piece) ? ChessColor.w : ChessColor.b;
-
-        PieceType type = piece switch
-        {
-            'P' or 'p' => PieceType.Pawn,
-            'N' or 'n' => PieceType.Knight,
-            'B' or 'b' => PieceType.Bishop,
-            'R' or 'r' => PieceType.Rook,
-            'Q' or 'q' => PieceType.Queen,
-            'K' or 'k' => PieceType.King,
-            _ => throw new ArgumentException($"Invalid piece character '{piece}' in FEN string.")
-        };
-
-        SetPiece(position, color, type);
+        // Yield each bitboard with the corresponding piece type and color
+        yield return (WhitePawns, PieceType.Pawn, ChessColor.w); // White Pawns
+        yield return (BlackPawns, PieceType.Pawn, ChessColor.b); // Black Pawns
+        yield return (WhiteKnights, PieceType.Knight, ChessColor.w); // White Knights
+        yield return (BlackKnights, PieceType.Knight, ChessColor.b); // Black Knights
+        yield return (WhiteBishops, PieceType.Bishop, ChessColor.w); // White Bishops
+        yield return (BlackBishops, PieceType.Bishop, ChessColor.b); // Black Bishops
+        yield return (WhiteRooks, PieceType.Rook, ChessColor.w); // White Rooks
+        yield return (BlackRooks, PieceType.Rook, ChessColor.b); // Black Rooks
+        yield return (WhiteQueens, PieceType.Queen, ChessColor.w); // White Queens
+        yield return (BlackQueens, PieceType.Queen, ChessColor.b); // Black Queens
+        yield return (WhiteKings, PieceType.King, ChessColor.w); // White Kings
+        yield return (BlackKings, PieceType.King, ChessColor.b); // Black Kings
     }
 
     public IEnumerable<Move> GetCandidateMoves(int positionIndex)
@@ -417,43 +441,29 @@ public struct ChessBitboard
           (BlackPawns | BlackKnights | BlackBishops | BlackRooks | BlackQueens | BlackKings)) & (1UL << positionIndex)) != 0;
 
     // Set a bit for a specific piece and color
-    public void SetPiece(int position, ChessColor color, PieceType type)
+    public ChessBitboard SetPiece(ulong mask, ChessColor color, PieceType type)
     {
-        ulong mask = 1UL << position;
-        switch (color)
-        {
-            case ChessColor.w:
-                SetWhitePiece(mask, type);
-                break;
-            case ChessColor.b:
-                SetBlackPiece(mask, type);
-                break;
-        }
-    }
-
-    private void SetWhitePiece(ulong mask, PieceType type)
-    {
-        switch (type)
-        {
-            case PieceType.Pawn:
-                WhitePawns |= mask;
-                break;
-            case PieceType.Knight:
-                WhiteKnights |= mask;
-                break;
-            case PieceType.Bishop:
-                WhiteBishops |= mask;
-                break;
-            case PieceType.Rook:
-                WhiteRooks |= mask;
-                break;
-            case PieceType.Queen:
-                WhiteQueens |= mask;
-                break;
-            case PieceType.King:
-                WhiteKings |= mask;
-                break;
-        }
+        return color == ChessColor.w
+            ? type switch
+            {
+                PieceType.Pawn => new ChessBitboard(WhitePawns | mask, BlackPawns, WhiteKnights, BlackKnights, WhiteBishops, BlackBishops, WhiteRooks, BlackRooks, WhiteQueens, BlackQueens, WhiteKings, BlackKings, _rankMax, _fileMax, _promote),
+                PieceType.Knight => new ChessBitboard(WhitePawns, BlackPawns, WhiteKnights | mask, BlackKnights, WhiteBishops, BlackBishops, WhiteRooks, BlackRooks, WhiteQueens, BlackQueens, WhiteKings, BlackKings, _rankMax, _fileMax, _promote),
+                PieceType.Bishop => new ChessBitboard(WhitePawns, BlackPawns, WhiteKnights, BlackKnights, WhiteBishops | mask, BlackBishops, WhiteRooks, BlackRooks, WhiteQueens, BlackQueens, WhiteKings, BlackKings, _rankMax, _fileMax, _promote),
+                PieceType.Rook => new ChessBitboard(WhitePawns, BlackPawns, WhiteKnights, BlackKnights, WhiteBishops, BlackBishops, WhiteRooks | mask, BlackRooks, WhiteQueens, BlackQueens, WhiteKings, BlackKings, _rankMax, _fileMax, _promote),
+                PieceType.Queen => new ChessBitboard(WhitePawns, BlackPawns, WhiteKnights, BlackKnights, WhiteBishops, BlackBishops, WhiteRooks, BlackRooks, WhiteQueens | mask, BlackQueens, WhiteKings, BlackKings, _rankMax, _fileMax, _promote),
+                PieceType.King => new ChessBitboard(WhitePawns, BlackPawns, WhiteKnights, BlackKnights, WhiteBishops, BlackBishops, WhiteRooks, BlackRooks, WhiteQueens, BlackQueens, WhiteKings | mask, BlackKings, _rankMax, _fileMax, _promote),
+                _ => this
+            }
+            : type switch
+            {
+                PieceType.Pawn => new ChessBitboard(WhitePawns, BlackPawns | mask, WhiteKnights, BlackKnights, WhiteBishops, BlackBishops, WhiteRooks, BlackRooks, WhiteQueens, BlackQueens, WhiteKings, BlackKings, _rankMax, _fileMax, _promote),
+                PieceType.Knight => new ChessBitboard(WhitePawns, BlackPawns, WhiteKnights, BlackKnights | mask, WhiteBishops, BlackBishops, WhiteRooks, BlackRooks, WhiteQueens, BlackQueens, WhiteKings, BlackKings, _rankMax, _fileMax, _promote),
+                PieceType.Bishop => new ChessBitboard(WhitePawns, BlackPawns, WhiteKnights, BlackKnights, WhiteBishops, BlackBishops | mask, WhiteRooks, BlackRooks, WhiteQueens, BlackQueens, WhiteKings, BlackKings, _rankMax, _fileMax, _promote),
+                PieceType.Rook => new ChessBitboard(WhitePawns, BlackPawns, WhiteKnights, BlackKnights, WhiteBishops, BlackBishops, WhiteRooks, BlackRooks | mask, WhiteQueens, BlackQueens, WhiteKings, BlackKings, _rankMax, _fileMax, _promote),
+                PieceType.Queen => new ChessBitboard(WhitePawns, BlackPawns, WhiteKnights, BlackKnights, WhiteBishops, BlackBishops, WhiteRooks, BlackRooks, WhiteQueens, BlackQueens | mask, WhiteKings, BlackKings, _rankMax, _fileMax, _promote),
+                PieceType.King => new ChessBitboard(WhitePawns, BlackPawns, WhiteKnights, BlackKnights, WhiteBishops, BlackBishops, WhiteRooks, BlackRooks, WhiteQueens, BlackQueens, WhiteKings, BlackKings | mask, _rankMax, _fileMax, _promote),
+                _ => this
+            };
     }
 
     public PieceType? GetPieceAt(int position, ChessColor color)
@@ -478,31 +488,6 @@ public struct ChessBitboard
             if ((BlackQueens & mask) != 0) return PieceType.Queen;
             if ((BlackKings & mask) != 0) return PieceType.King;
             return null; // No piece at this position
-        }
-    }
-
-    private void SetBlackPiece(ulong mask, PieceType type)
-    {
-        switch (type)
-        {
-            case PieceType.Pawn:
-                BlackPawns |= mask;
-                break;
-            case PieceType.Knight:
-                BlackKnights |= mask;
-                break;
-            case PieceType.Bishop:
-                BlackBishops |= mask;
-                break;
-            case PieceType.Rook:
-                BlackRooks |= mask;
-                break;
-            case PieceType.Queen:
-                BlackQueens |= mask;
-                break;
-            case PieceType.King:
-                BlackKings |= mask;
-                break;
         }
     }
 
@@ -605,131 +590,117 @@ public struct ChessBitboard
         }
     }
 
-    public void MakeMove(Move move)
+    public ChessBitboard MakeMove(Move move)
     {
-        var startPosition = (int)move.From;
-        var endPosition = (int)move.To;
+        int startPosition = (int)move.From;
+        int endPosition = (int)move.To;
+        ulong startMask = 1UL << startPosition;
+        ulong endMask = 1UL << endPosition;
 
-        // Get the piece at the start position
-        ChessColor pieceColor = default; // Track the color of the piece
-        PieceType pieceType = default; // Track the color of the piece
-        if ((WhitePawns & (1UL << startPosition)) != 0)
+        // Determine piece type and color
+        PieceType pieceType = default;
+        ChessColor pieceColor = default;
+
+        foreach (PieceType type in (PieceType[])Enum.GetValues(typeof(PieceType)))
         {
-            pieceColor = ChessColor.w;
-            pieceType = PieceType.Pawn;
-            WhitePawns &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((BlackPawns & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.b;
-            pieceType = PieceType.Pawn;
-            BlackPawns &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((WhiteKnights & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.w;
-            pieceType = PieceType.Knight;
-            WhiteKnights &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((BlackKnights & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.b;
-            pieceType = PieceType.Knight;
-            BlackKnights &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((WhiteBishops & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.w;
-            pieceType = PieceType.Bishop;
-            WhiteBishops &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((BlackBishops & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.b;
-            pieceType = PieceType.Bishop;
-            BlackBishops &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((WhiteRooks & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.w;
-            pieceType = PieceType.Rook;
-            WhiteRooks &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((BlackRooks & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.b;
-            pieceType = PieceType.Rook;
-            BlackRooks &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((WhiteQueens & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.w;
-            pieceType = PieceType.Queen;
-            WhiteQueens &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((BlackQueens & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.b;
-            pieceType = PieceType.Queen;
-            BlackQueens &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((WhiteKings & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.w;
-            pieceType = PieceType.King;
-            WhiteKings &= ~(1UL << startPosition); // Remove from start position
-        }
-        else if ((BlackKings & (1UL << startPosition)) != 0)
-        {
-            pieceColor = ChessColor.b;
-            pieceType = PieceType.King;
-            BlackKings &= ~(1UL << startPosition); // Remove from start position
+            if ((GetBitboard(type, ChessColor.w) & startMask) != 0)
+            {
+                pieceType = type;
+                pieceColor = ChessColor.w;
+                break;
+            }
+            if ((GetBitboard(type, ChessColor.b) & startMask) != 0)
+            {
+                pieceType = type;
+                pieceColor = ChessColor.b;
+                break;
+            }
         }
 
-        // Capture logic (remove captured piece if any)
+        ChessBitboard newBoard = this;
+
+        // Remove piece from the starting position
+        newBoard = newBoard.ClearPiece(startPosition, pieceType, pieceColor);
+
+        // Capture logic: Remove opponent's piece at the destination
         if (IsEnemyPieceAt(endPosition, pieceColor))
         {
-            // Remove the captured piece from the appropriate enemy bitboard
-            if (pieceColor == ChessColor.w)
+            foreach (PieceType type in (PieceType[])Enum.GetValues(typeof(PieceType)))
             {
-                // Remove from Black pieces bitboard
-                BlackPawns &= ~(1UL << endPosition);
-                BlackKnights &= ~(1UL << endPosition);
-                BlackBishops &= ~(1UL << endPosition);
-                BlackRooks &= ~(1UL << endPosition);
-                BlackQueens &= ~(1UL << endPosition);
-                BlackKings &= ~(1UL << endPosition);
-            }
-            else
-            {
-                // Remove from White pieces bitboard
-                WhitePawns &= ~(1UL << endPosition);
-                WhiteKnights &= ~(1UL << endPosition);
-                WhiteBishops &= ~(1UL << endPosition);
-                WhiteRooks &= ~(1UL << endPosition);
-                WhiteQueens &= ~(1UL << endPosition);
-                WhiteKings &= ~(1UL << endPosition);
+                if ((GetBitboard(type, pieceColor.Opponent()) & endMask) != 0)
+                {
+                    newBoard = newBoard.ClearPiece(endPosition, type, pieceColor.Opponent());
+                    break;
+                }
             }
         }
 
+        // Promotion logic
         if (_promote && pieceType == PieceType.Pawn)
         {
-            int lastRankStart = _rankMax * (_rankMax - 1); // First position of the last rank
-            int lastRankEnd = _rankMax * _rankMax - 1; // Last position of the last rank
+            int lastRankStart = _rankMax * (_rankMax - 1); // First position of last rank
+            int lastRankEnd = _rankMax * _rankMax - 1; // Last position of last rank
             int firstRankStart = 0;
             int firstRankEnd = _rankMax - 1;
 
-            if (pieceColor == ChessColor.w && (endPosition >= lastRankStart && endPosition <= lastRankEnd))
+            if ((pieceColor == ChessColor.w && endPosition >= lastRankStart && endPosition <= lastRankEnd) ||
+                (pieceColor == ChessColor.b && endPosition >= firstRankStart && endPosition <= firstRankEnd))
             {
-                pieceType = PieceType.Queen; // Promote White Pawn to Queen
-            }
-            else if (pieceColor == ChessColor.b && (endPosition >= firstRankStart && endPosition <= firstRankEnd))
-            {
-                pieceType = PieceType.Queen; // Promote Black Pawn to Queen
+                pieceType = PieceType.Queen; // Promote Pawn to Queen
             }
         }
 
-        SetPiece(endPosition, pieceColor, pieceType);
+        // Set piece at the new position
+        return newBoard.SetPiece(endMask, pieceColor, pieceType);
+    }
+    private ulong GetBitboard(PieceType type, ChessColor color)
+    {
+        return color == ChessColor.w ? type switch
+        {
+            PieceType.Pawn => WhitePawns,
+            PieceType.Knight => WhiteKnights,
+            PieceType.Bishop => WhiteBishops,
+            PieceType.Rook => WhiteRooks,
+            PieceType.Queen => WhiteQueens,
+            PieceType.King => WhiteKings,
+            _ => 0
+        }
+        : type switch
+        {
+            PieceType.Pawn => BlackPawns,
+            PieceType.Knight => BlackKnights,
+            PieceType.Bishop => BlackBishops,
+            PieceType.Rook => BlackRooks,
+            PieceType.Queen => BlackQueens,
+            PieceType.King => BlackKings,
+            _ => 0
+        };
+    }
+
+    private ChessBitboard ClearPiece(int position, PieceType type, ChessColor color)
+    {
+        ulong mask = ~(1UL << position);
+
+        return color == ChessColor.w ? type switch
+        {
+            PieceType.Pawn => this.With(whitePawns: WhitePawns & mask),
+            PieceType.Knight => this.With(whiteKnights: WhiteKnights & mask),
+            PieceType.Bishop => this.With(whiteBishops: WhiteBishops & mask),
+            PieceType.Rook => this.With(whiteRooks: WhiteRooks & mask),
+            PieceType.Queen => this.With(whiteQueens: WhiteQueens & mask),
+            PieceType.King => this.With(whiteKings: WhiteKings & mask),
+            _ => this
+        }
+        : type switch
+        {
+            PieceType.Pawn => this.With(blackPawns: BlackPawns & mask),
+            PieceType.Knight => this.With(blackKnights: BlackKnights & mask),
+            PieceType.Bishop => this.With(blackBishops: BlackBishops & mask),
+            PieceType.Rook => this.With(blackRooks: BlackRooks & mask),
+            PieceType.Queen => this.With(blackQueens: BlackQueens & mask),
+            PieceType.King => this.With(blackKings: BlackKings & mask),
+            _ => this
+        };
     }
 
     public bool IsKingInCheck(ChessColor kingColor)
@@ -773,49 +744,43 @@ public struct ChessBitboard
     internal (bool isCheckmate, bool isStalemate, bool isCheck, bool isDraw) CheckGameOver(ChessColor player)
     {
         bool inCheck = IsKingInCheck(player);
+        bool hasLegalMoves = false;
 
-        // Clone the board to avoid modifying the original state
-        var originalState = Clone();
-
-        // Iterate over all pieces of the player and check if any legal move exists
-        foreach (PieceType pieceType in PIECE_TYPES)
+        foreach ((PieceType pieceType, int position, ChessColor color) piece in GetAllPieces())
         {
-            ulong pieceBitboard = GetPieceBitboard(player, pieceType);
-
-            while (pieceBitboard != 0)
+            if (player == piece.color)
             {
-                int piecePosition = BitScanForward(pieceBitboard);
-                pieceBitboard &= pieceBitboard - 1; // Remove the least significant bit
-
-                // Get all valid moves for this piece
-                IEnumerable<Move> moves = GetCandidateMoves(piecePosition);
-
+                IEnumerable<Move> moves = GetCandidateMoves(piece.position);
                 foreach (Move move in moves)
                 {
-                    ChessBitboard state = originalState.Clone();
-                    state.MakeMove(move);
-
-                    // If any legal move exists, it's neither checkmate, stalemate, nor draw
-                    if (!state.IsKingInCheck(player))
+                    var newState = MakeMove(move);
+                    if (!newState.IsKingInCheck(player))
                     {
-                        return (false, false, inCheck, false);
+                        hasLegalMoves = true;
+                        break; // Early exit once a legal move is found
                     }
                 }
             }
+
+            if (hasLegalMoves) break; // Break outer loop if a legal move is found
         }
 
-        // If no legal moves exist, determine checkmate or stalemate
-        if (inCheck)
-            return (true, false, true, false);
+        if (!hasLegalMoves)
+        {
+            if (inCheck)
+                return (true, false, true, false); // Checkmate
+            else
+                return (false, true, false, false); // Stalemate
+        }
 
         // Check for draw conditions
         if (IsInsufficientMaterial()
             //|| IsThreefoldRepetition()
-            //|| IsFiftyMoveRule()
+            //|| IsFiftyMoveRule())
             )
-            return (false, false, false, true);
+            return (false, false, false, true); // Draw
 
-        return (false, true, false, false);
+        return (false, false, inCheck, false); // Game is ongoing
     }
 
     private bool IsInsufficientMaterial()
@@ -844,23 +809,14 @@ public struct ChessBitboard
 
     public ChessBitboard Clone()
     {
-        return new ChessBitboard()
-        {
-            WhitePawns = this.WhitePawns,
-            BlackPawns = this.BlackPawns,
-            WhiteKnights = this.WhiteKnights,
-            BlackKnights = this.BlackKnights,
-            WhiteBishops = this.WhiteBishops,
-            BlackBishops = this.BlackBishops,
-            WhiteRooks = this.WhiteRooks,
-            BlackRooks = this.BlackRooks,
-            WhiteQueens = this.WhiteQueens,
-            BlackQueens = this.BlackQueens,
-            WhiteKings = this.WhiteKings,
-            BlackKings = this.BlackKings,
-            _rankMax = this._rankMax,
-            _fileMax = this._fileMax,
-        };
+        return new ChessBitboard(
+            WhitePawns, BlackPawns,
+            WhiteKnights, BlackKnights,
+            WhiteBishops, BlackBishops,
+            WhiteRooks, BlackRooks,
+            WhiteQueens, BlackQueens,
+            WhiteKings, BlackKings,
+            _rankMax, _fileMax, _promote);
     }
 
     private int BitScanForward(ulong bitboard)

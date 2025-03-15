@@ -74,13 +74,13 @@
     <Compile Include="Assets\Scripts\Chess\Move.cs" />
     <Compile Include="Assets\Scripts\Board.cs" />
     <Compile Include="Assets\Scripts\Instructions.cs" />
-    <Compile Include="Assets\Scripts\Chess\ChessGameRecord.cs" />
     <Compile Include="Assets\Scripts\Chess\Solvers\SolverDefinitionBase.cs" />
     <Compile Include="Assets\Scripts\History\HistoryPanel.cs" />
     <Compile Include="Assets\Scripts\Draggable.cs" />
     <Compile Include="Assets\Scripts\Chess\Solvers\MinimaxABSolverDefinition.cs" />
     <Compile Include="Assets\Scripts\AudioManager.cs" />
     <Compile Include="Assets\Scripts\Chess\Evaluators\EvaluatorBase.cs" />
+    <Compile Include="Assets\Scripts\Chess\BitboardHelper.cs" />
     <Compile Include="Assets\Scripts\Cell.cs" />
     <Compile Include="Assets\Scripts\Chess\ChessBitboard.cs" />
     <Compile Include="Assets\Scripts\Chess\ChessGame.cs" />
